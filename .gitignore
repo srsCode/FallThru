@@ -1,0 +1,38 @@
+# Ignore everything...
+
+/*
+
+# Except...
+
+# Repo files
+!.github/
+!.gitattributes
+!.gitignore
+!.gitmodules
+
+# Project files
+!src/
+!docs/
+!LICENSE/
+!LICENSE.*
+!README*
+
+# Third-party libraries
+!lib/
+
+# Gradle 
+!gradle/
+!gradlew
+!gradlew.bat
+!?*.gradle
+!*.properties
+!gradle.*
+!build.*
+
+# Integrations
+!codeformat/
+!.travis.yml
+
+# Other
+!publish/
+publish/releases/*changelog*
