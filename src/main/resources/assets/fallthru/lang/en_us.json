@@ -5,6 +5,5 @@
   "fallthru.config.passableBlocks"  : "Passable Blocks",
   "fallthru.config.blacklistBlocks" : "Blacklisted Blocks",
   "fallthru.death.fallintoleaves"   : "%1$s fell into leaves and was impaled by branches",
-  "fallthru.death.fallintosnow"     : "%1$s got packed into a snowball",
-  "block.fallthru.ft_block"         : "FallThru Test Block"
+  "fallthru.death.fallintosnow"     : "%1$s got packed into a snowball"
 }
