@@ -1,0 +1,28 @@
+modLoader       = "javafml"
+loaderVersion   = "[28,)"
+issueTrackerURL = "https://github.com/srscode/FallThru/issues/"
+
+[[mods]]
+modId           = "fallthru"
+version         = "${file.jarVersion}"
+displayName     = "FallThru"
+#updateJSONURL  = ""
+displayURL      = "https://srscode.github.io/FallThru/"
+logoFile        = "fallthru-banner.png"
+credits         = "https://github.com/srscode/FallThru/graphs/contributors"
+authors         = "srs-bsns"
+description     = "Allows entities to be able to move through certain blocks, like leaves and snow."
+
+[[dependencies.fallthru]]
+modId           = "forge"
+mandatory       = true
+versionRange    = "[28.1,)"
+ordering        = "NONE"
+side            = "BOTH"
+
+[[dependencies.fallthru]]
+modId           = "minecraft"
+mandatory       = true
+versionRange    = "[1.14.4,)"
+ordering        = "NONE"
+side            = "BOTH"
