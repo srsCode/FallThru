@@ -8,13 +8,9 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 
-import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
@@ -23,7 +19,6 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.ForgeConfigSpec.Builder;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
@@ -40,27 +35,25 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.network.NetworkRegistry;
 import net.minecraftforge.fml.network.PacketDistributor;
 import net.minecraftforge.fml.network.simple.SimpleChannel;
-import net.minecraftforge.registries.ObjectHolder;
 
 import srscode.fallthru.BlockConfigMap.BlockConfig;
 
 @Mod(FallThru.MOD_ID)
 public class FallThru
 {
-    static final String           MOD_ID           = "fallthru";
-    static final boolean          DEBUG_MODE       = System.getProperties().containsKey("fallthru.debug");
-    static final Marker           MARKER_LIFECYCLE = MarkerManager.getMarker("LIFECYCLE").addParents(Logging.LOADING);
-    static final Marker           MARKER_CONFIG    = MarkerManager.getMarker("CONFIG");
-    static final Marker           MARKER_NETWORK   = MarkerManager.getMarker("NETWORK");
-    static final Marker           MARKER_BLOCKCFG  = MarkerManager.getMarker("BLOCK CONFIG");
-    static final Marker           MARKER_DEBUG     = MarkerManager.getMarker("DEBUG");
-    static final Logger           LOGGER           = LogManager.getLogger(MOD_ID);
+    static final String MOD_ID           = "fallthru";
+    static final Marker MARKER_LIFECYCLE = MarkerManager.getMarker("LIFECYCLE").addParents(Logging.LOADING);
+    static final Marker MARKER_CONFIG    = MarkerManager.getMarker("CONFIG");
+    static final Marker MARKER_NETWORK   = MarkerManager.getMarker("NETWORK");
+    static final Marker MARKER_BLOCKCFG  = MarkerManager.getMarker("BLOCK CONFIG");
+    static final Logger LOGGER           = LogManager.getLogger(MOD_ID);
+
     static final ResourceLocation NET_CHANNEL_NAME = new ResourceLocation(MOD_ID, "config_update");
     static final String           NET_VERSION      = "ftcu-1";
-    static final BlockConfigMap   BLOCK_CONFIG_MAP = new BlockConfigMap();
 
-    static final ForgeConfigSpec  COMMON_CONFIG_SPEC;
-    static final CommonConfig     COMMON_CONFIG;
+    static final BlockConfigMap  BLOCK_CONFIG_MAP = new BlockConfigMap();
+    static final ForgeConfigSpec COMMON_CONFIG_SPEC;
+    static final CommonConfig    COMMON_CONFIG;
 
     static
     {
@@ -72,9 +65,6 @@ public class FallThru
     private static FallThru instance;
 
     private final SimpleChannel channel;
-
-    @ObjectHolder(value = TestBlock.RESLOC_NAME)
-    public static final Block TEST_BLOCK = null;
 
     public FallThru()
     {
@@ -88,10 +78,6 @@ public class FallThru
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::blockConfigMapInit);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigUpdate);
         MinecraftForge.EVENT_BUS.register(this); // FMLServerStartingEvent, PlayerLoggedInEvent
-        if (DEBUG_MODE) {
-            LOGGER.warn(MARKER_DEBUG, "DEBUG MODE IS ENABLED!");
-            FMLJavaModLoadingContext.get().getModEventBus().register(new TestBlockRegistrar());
-        }
     }
 
     /**
@@ -155,9 +141,6 @@ public class FallThru
     public void onServerStarting(final FMLServerStartingEvent event)
     {
         syncLocal();
-        if (DEBUG_MODE) {
-            LOGGER.debug(MARKER_DEBUG, "{}", BLOCK_CONFIG_MAP);
-        }
     }
 
     /**
@@ -182,11 +165,6 @@ public class FallThru
         LOGGER.debug(MARKER_CONFIG, "Syncing local config");
         BLOCK_CONFIG_MAP.clear();
         BLOCK_CONFIG_MAP.addAll(BLOCK_CONFIG_MAP.parseConfig(COMMON_CONFIG.getPassableBlocks()));
-
-        //noinspection ConstantConditions
-        if (TEST_BLOCK != null) {
-            BLOCK_CONFIG_MAP.add(BlockConfig.create(TEST_BLOCK, 0.8, 0.8, true));
-        }
 
         // if this is a dedicated server, dispatch a S2CFallThruUpdatePacket.
         DistExecutor.runWhenOn(Dist.DEDICATED_SERVER, () -> this::updateAll);
@@ -230,32 +208,5 @@ public class FallThru
     static FallThru getInstance()
     {
         return instance;
-    }
-
-    public static final class TestBlockRegistrar
-    {
-        public TestBlockRegistrar() {}
-
-        @SubscribeEvent
-        public void registerTestBlock(final RegistryEvent.Register<Block> event)
-        {
-            FallThru.LOGGER.debug(FallThru.MARKER_LIFECYCLE, "Creating and Registering {}", TestBlock.RESLOC_NAME, event.getName());
-            event.getRegistry().register(new TestBlock().setRegistryName(new ResourceLocation(TestBlock.RESLOC_NAME)));
-        }
-
-        @SubscribeEvent
-        public void registerTestBlockItem(final RegistryEvent.Register<Item> event)
-        {
-            //noinspection ConstantConditions
-            if (TEST_BLOCK != null) {
-                FallThru.LOGGER.debug(FallThru.MARKER_LIFECYCLE, "Creating and Registering item for {}", TestBlock.RESLOC_NAME);
-                event.getRegistry().register(
-                    new BlockItem(TEST_BLOCK, new Item.Properties().group(ItemGroup.BUILDING_BLOCKS))
-                        .setRegistryName(new ResourceLocation(TestBlock.RESLOC_NAME))
-                );
-            } else {
-                FallThru.LOGGER.debug(FallThru.MARKER_LIFECYCLE, "Failed to register item for {} (TEST_BLOCK == null)", TestBlock.RESLOC_NAME);
-            }
-        }
     }
 }
