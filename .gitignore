@@ -13,8 +13,8 @@
 # Project files
 !src/
 !docs/
-!LICENSE/
-!LICENSE.*
+!LICEN?E/
+!LICEN?E.*
 !README*
 
 # Third-party libraries
