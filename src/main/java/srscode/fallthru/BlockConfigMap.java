@@ -238,16 +238,6 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     }
 
     /**
-     * Clears this BlockConfigMap when synchronizing through {@link #remove(BlockConfig)}
-     * so that the {@link Block}s can be properly reset if required.
-     */
-    @Override
-    public void clear()
-    {
-        values().forEach(this::remove);
-    }
-
-    /**
      * A shortcut to get a {@link BlockConfig} directly from its associated {@link Block}.
      *
      * @param  block The Block to retrieve a BlockConfig for.
