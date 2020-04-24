@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : FallThru.java
- * Last Modified: 20190914-03:05:53-0400
+ * Last Modified: 20200424-04:05:52-0400
  *
- * Copyright (c) 2019 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -55,7 +55,7 @@ import net.minecraftforge.fml.Logging;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.config.ModConfig.ConfigReloading;
+import net.minecraftforge.fml.config.ModConfig.Reloading;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
@@ -144,10 +144,10 @@ public class FallThru
      * is starting, at which time the syncing will occur.
      * This will always cause syncing on a dedicated server that will propogate to clients.
      *
-     * @param event The {@link ModConfig.ConfigReloading} event
+     * @param event The {@link ModConfig.Reloading} event
      */
     // TODO: This event was not firing consistently on config file change.
-    public void onConfigUpdate(final ConfigReloading event)
+    public void onConfigUpdate(final Reloading event)
     {
         if (event.getConfig().getModId().equals(MOD_ID)) {
             if (FMLEnvironment.dist == Dist.CLIENT && (Minecraft.getInstance().getIntegratedServer() == null || Minecraft.getInstance().getConnection() != null)) {

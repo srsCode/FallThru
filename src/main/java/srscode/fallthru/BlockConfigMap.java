@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20190914-03:05:53-0400
+ * Last Modified: 20191002-11:21:28-0400
  *
- * Copyright (c) 2019 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -184,6 +184,7 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     {
         final Block block = blockConfig.getBlock();
         block.blocksMovement = false;
+        // TODO: Removing the cache and setting variableOpacity may not be required in 1.15 as per https://bugs.mojang.com/browse/MC-161916
         block.variableOpacity = true;
         block.getDefaultState().cache = null;
         put(getHash(block), blockConfig);

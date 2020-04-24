@@ -36,6 +36,7 @@ minecraft {
     setAccessTransformer sourceSets.main.resources.files.find{ (it.name == "accesstransformer.cfg") }
     runs {
         client {
+            taskName "fallthruClient"
             ideaModule("${rootProject.name}.main")
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
@@ -43,6 +44,7 @@ minecraft {
             mods {fallhru {source sourceSets.main}}
         }
         server {
+            taskName "fallthruServer"
             ideaModule("${rootProject.name}.main")
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
@@ -50,15 +52,21 @@ minecraft {
             mods {fallhru {source sourceSets.main}}
         }
         data {
+            taskName "fallthruData"
             ideaModule("${rootProject.name}.main")
             workingDirectory project.file('run')
-            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
-            property 'forge.logging.console.level', 'debug'
-            args '--mod', 'fallthru', '--all', '--output', file('src/generated/resources/')
+            environment 'target', 'fmluserdevdata'
+            property 'forge.logging.markers', 'SCAN'
+            property 'forge.logging.console.level', 'warn'
+            args '--mod', 'fallthru', '--all', '--output', file('generated/resources/')
+            jvmArgs '-Dfml.earlyprogresswindow=false'
+            sourceSets.main.resources.srcDirs.forEach {args '--existing', it}
             mods {fallthru {source sourceSets.main}}
         }
     }
 }
+
+sourceSets.main.resources.srcDir "${project.buildDir}/generated/resources"
 
 dependencies {
     minecraft("net.minecraftforge:forge:${project.mc_version}-${project.forge_version}")
