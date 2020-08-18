@@ -60,8 +60,13 @@ minecraft {
     }
 }
 
+repositories {
+    maven { url = 'http://repo.spongepowered.org/maven/'}
+}
+
 dependencies {
     minecraft("net.minecraftforge:forge:${project.mc_version}-${project.forge_version}")
+    annotationProcessor 'org.spongepowered:mixin:0.8.1-SNAPSHOT:processor'
 }
 
 def timestamp = java.time.OffsetDateTime.now() as String
