@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : CommonConfig.java
- * Last Modified: 20190914-03:05:53-0400
+ * Last Modified: 20200713-21:43:16-0400
  *
- * Copyright (c) 2019 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -73,7 +73,7 @@ final class CommonConfig
 
     CommonConfig(final Builder builder)
     {
-        final String passableBlocksDefault = "tag/" + BlockTags.LEAVES.getId() + "[0.8, 0.8]";
+        final String passableBlocksDefault = "tag/" + BlockTags.LEAVES.getName() + "[0.8, 0.8]";
 
         builder.comment("  FallThru Config").push(FallThru.MOD_ID);
 

@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : S2CFallThruUpdatePacket.java
- * Last Modified: 20190914-03:05:53-0400
+ * Last Modified: 20190914-03:07:06-0400
  *
- * Copyright (c) 2019 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *

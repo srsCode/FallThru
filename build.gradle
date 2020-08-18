@@ -1,72 +1,64 @@
 buildscript {
     repositories {
-        maven { url = "https://files.minecraftforge.net/maven" }
+        maven { url = 'https://files.minecraftforge.net/maven' }
+        maven { url = 'http://repo.spongepowered.org/maven/'}
         jcenter()
         mavenCentral()
     }
     dependencies {
-        classpath group: "net.minecraftforge.gradle", name: "ForgeGradle", version: "3.+", changing: true
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.+', changing: true
+        classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
     }
 }
-plugins { id "org.ajoberstar.reckon" version "0.11.0" }
-apply plugin: "net.minecraftforge.gradle"
-apply plugin: "checkstyle"
-apply plugin: "maven-publish"
-if (file("../.etc/srscode-MC.gradle").exists()) { apply from:"../.etc/srscode-MC.gradle" }
+plugins { id 'org.ajoberstar.reckon' version '0.11.0' }
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'org.spongepowered.mixin'
+apply plugin: 'checkstyle'
+apply plugin: 'maven-publish'
+if (file('../.etc/srscode-MC.gradle').exists()) { apply from:'../.etc/srscode-MC.gradle' }
 
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
 reckon {
     scopeFromProp()
-    stageFromProp("dev", "rc", "final")
+    stageFromProp('dev', 'rc', 'final')
 }
 
 checkstyle {
-    setConfig resources.text.fromUri("https://srscode.github.io/checkstyle/srsCode-MC-checkstyle.xml")
+    setConfig resources.text.fromUri('https://srscode.github.io/checkstyle/srsCode-MC-checkstyle.xml')
     setReportsDir file("${project.buildDir}/reports/checkstyle")
-    setToolVersion "8.16"
+    setToolVersion '8.16'
 }
 tasks.withType(Checkstyle) {
     reports.xml.enabled false
     reports.html.enabled true
 }
 
+def mixin_file = 'fallthru.mixins.json'
 minecraft {
     mappings channel: project.mapping_channel, version: project.mapping_version
-    setAccessTransformer sourceSets.main.resources.files.find{ (it.name == "accesstransformer.cfg") }
+    setAccessTransformer sourceSets.main.resources.files.find{ (it.name == 'accesstransformer.cfg') }
     runs {
         client {
-            taskName "fallthruClient"
-            ideaModule("${rootProject.name}.main")
-            workingDirectory project.file('run')
+            taskName 'fallthruClient'
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
-            mods {fallhru {source sourceSets.main}}
+            property 'mixin.debug.export', 'true'
+            property 'fml.earlyprogresswindow', 'false'
+            arg "-mixin.config=${mixin_file}" as String
+            mods {self {source sourceSets.main}}
         }
         server {
-            taskName "fallthruServer"
-            ideaModule("${rootProject.name}.main")
-            workingDirectory project.file('run')
+            taskName 'fallthruServer'
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
-            mods {fallhru {source sourceSets.main}}
-        }
-        data {
-            taskName "fallthruData"
-            ideaModule("${rootProject.name}.main")
-            workingDirectory project.file('run')
-            environment 'target', 'fmluserdevdata'
-            property 'forge.logging.markers', 'SCAN'
-            property 'forge.logging.console.level', 'warn'
-            args '--mod', 'fallthru', '--all', '--output', file('generated/resources/')
-            jvmArgs '-Dfml.earlyprogresswindow=false'
-            sourceSets.main.resources.srcDirs.forEach {args '--existing', it}
-            mods {fallthru {source sourceSets.main}}
+            property 'mixin.debug.export', 'true'
+            property 'fml.earlyprogresswindow', 'false'
+            arg "-mixin.config=${mixin_file}" as String
+            mods {self {source sourceSets.main}}
         }
     }
 }
-
-sourceSets.main.resources.srcDir "${project.buildDir}/generated/resources"
 
 dependencies {
     minecraft("net.minecraftforge:forge:${project.mc_version}-${project.forge_version}")
@@ -75,39 +67,29 @@ dependencies {
 def timestamp = java.time.OffsetDateTime.now() as String
 def commonManifest = manifest {
     attributes([
-        "Specification-Vendor"    : "${project.vendor}",
-        "Specification-Title"     : "${project.name}",
-        "Specification-Version"   : "28", // maintain the version of FML
-        "Implementation-Vendor"   : "${project.vendor}",
-        "Implementation-Title"    : "${project.name}",
-        "Implementation-Version"  : "${project.version}",
-        "Implementation-Timestamp": timestamp
+        'Specification-Vendor'    : "${project.vendor}",
+        'Specification-Title'     : "${project.name}",
+        'Specification-Version'   : '1',
+        'Implementation-Vendor'   : "${project.vendor}",
+        'Implementation-Title'    : "${project.name}",
+        'Implementation-Version'  : "${project.version}",
+        'Implementation-Timestamp': timestamp,
+        'MixinConfigs'            : mixin_file,
+        'Maven-Artifact'          : "${project.group}:${archivesBaseName}:${project.version}"
     ])
 }
 
-setGroup "srscode" // will likely change in the future
-jar.manifest {
-    attributes(["Maven-Artifact": "${project.group}:${archivesBaseName}:${project.version}"])
-    from commonManifest
+setGroup 'de.srsco' // will likely change in the future
+jar {
+    manifest {from commonManifest}
 }
 
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allJava
-    classifier = 'sources'
-    manifest {
-        attributes(["Maven-Artifact": "${project.group}:${archivesBaseName}:${project.version}"])
-        from commonManifest
-    }
-}
-artifacts {archives sourcesJar}
-
-publish.dependsOn(sourcesJar, jar)
+publish.dependsOn(jar)
 publishing {
     publications {
         fallthru(MavenPublication) {
             groupId = project.group
             artifact jar
-            artifact sourcesJar
             pom {
                 artifactId = project.archivesBaseName
                 name = project.name
@@ -125,9 +107,9 @@ publishing {
 // run config task for properly setting the version for a dev environment
 import org.apache.tools.ant.filters.ReplaceTokens
 task processDevResources(type: Copy) {
-    destinationDir = ((Copy)project.tasks.getByName("processResources")).getDestinationDir()
+    destinationDir = ((Copy)project.tasks.getByName('processResources')).getDestinationDir()
     from(sourceSets.main.resources.srcDirs) {
-        exclude "assets/**"
-        filter tokens: ["file.jarVersion": project.version as String], beginToken: "\${", endToken: "}", ReplaceTokens
+        exclude 'assets/**'
+        filter tokens: ['file.jarVersion': project.version as String], beginToken: '\${', endToken: '}', ReplaceTokens
     }
 }

@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : RedirectionHandler.java
- * Last Modified: 20190914-03:05:53-0400
+ * Last Modified: 20200802-09:34:22-0400
  *
- * Copyright (c) 2019 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -35,6 +35,9 @@ import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -49,9 +52,9 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
+import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.IBlockReader;
@@ -74,20 +77,20 @@ public final class RedirectionHandler
     private static final DamageSource DMGSRC_LEAVES = new DamageSource(DAMAGETYPE_LEAVES) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_LEAVES;
         @Nonnull
-        @Override public ITextComponent getDeathMessage(final LivingEntity entity)
+        @Override public ITextComponent getDeathMessage(@Nonnull final LivingEntity entity)
         {
             return ForgeI18n.getPattern(LANG_KEY).equals(LANG_KEY)
-                   ? entity.getDisplayName().appendText(" fell into leaves and was impaled by branches")
+                   ? entity.getDisplayName().copyRaw().appendString(" fell into leaves and was impaled by branches")
                    : new TranslationTextComponent(LANG_KEY, entity.getDisplayName());
         }
     }.setDamageBypassesArmor();
     private static final DamageSource DMGSRC_SNOW = new DamageSource(DAMAGETYPE_SNOW) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_SNOW;
         @Nonnull
-        @Override public ITextComponent getDeathMessage(final LivingEntity entity)
+        @Override public ITextComponent getDeathMessage(@Nonnull final LivingEntity entity)
         {
             return ForgeI18n.getPattern(LANG_KEY).equals(LANG_KEY)
-                   ? entity.getDisplayName().appendText(" got packed into a snowball")
+                   ? entity.getDisplayName().copyRaw().appendString(" got packed into a snowball")
                    : new TranslationTextComponent(LANG_KEY, entity.getDisplayName());
         }
     }.setDamageBypassesArmor();
@@ -107,7 +110,7 @@ public final class RedirectionHandler
      * @param  motion The motion of the entity from {@link Entity#getMotion}.
      * @return        <b>true</b> if the entity is moving, <b>false</b> if not.
      */
-    private static boolean isMoving(final Vec3d motion)
+    private static boolean isMoving(final Vector3d motion)
     {
         return Double.compare(motion.x, 0.0) != 0 || Double.compare(motion.z, 0.0) != 0 || (motion.y > 0.07 || motion.y < -0.07);
     }
@@ -146,11 +149,11 @@ public final class RedirectionHandler
      * @param  blockState The {@link BlockState} of the block fallen into.
      * @return            The determined DamageSource.
      */
-    private static DamageSource getDamageSource(final BlockState blockState)
+    private static DamageSource getDamageSource(final AbstractBlock.AbstractBlockState blockState)
     {
         final Block block = blockState.getBlock();
         final Material material = blockState.getMaterial();
-        if (BlockTags.LEAVES.contains(block)) {
+        if (block.isIn(BlockTags.LEAVES)) {
             return DMGSRC_LEAVES;
         } else if (material == Material.SNOW || material == Material.SNOW_BLOCK) {
             return DMGSRC_SNOW;
@@ -161,16 +164,15 @@ public final class RedirectionHandler
 
     /**
      * The Collision handler.
-     * This method is called from the coremod injection point in {@link BlockState#onEntityCollision} (func_196950_a).
+     * This method is called from the mixin injection point in {@link AbstractBlock.AbstractBlockState#onEntityCollision} (func_196950_a).
      *
      * @param  world      The {@link World} of the Block being collided.
-     * @param  pos        The {@link Vec3d} coordinates of the BlockState being collided with.
+     * @param  pos        The {@link Vector3d} coordinates of the BlockState being collided with.
      * @param  entity     The {@link Entity} colliding with the BlockState.
      * @param  blockState The {@link BlockState} of the block being collided with.
-     * @return            Returns <b>false</b> if this method does not handle the collision, or if the configuration
-     *                    of the block allows for the native collision handling as well. Returns <b>true</b> otherwise.
+     * @param  callback   The {@link CallbackInfo} object to handle the return state
      */
-    public static boolean handleCollision(final World world, final BlockPos pos, final Entity entity, final BlockState blockState)
+    public static void handleCollision(final World world, final BlockPos pos, final Entity entity, final BlockState blockState, final CallbackInfo callback)
     {
         if (entity instanceof LivingEntity) {
             final Optional<BlockConfig> maybeBlockcfg = FallThru.BLOCK_CONFIG_MAP.getConfig(blockState.getBlock());
@@ -222,7 +224,7 @@ public final class RedirectionHandler
                     living.fallDistance = living.fallDistance > 3.0f ? living.fallDistance * (float) speedMult : 0f;
 
                     // handle collision sounds; Only play sounds if the entity is moving; once every 5 ticks.
-                    final Vec3d motion = living.getMotion();
+                    final Vector3d motion = living.getMotion();
                     if (isMoving(motion) && world.getGameTime() % 5 == 0) {
                         living.playSound(soundtype.getStepSound(), soundtype.getVolume(), soundtype.getPitch() * 0.75f);
                     }
@@ -234,12 +236,12 @@ public final class RedirectionHandler
                         living.setMotion(motion.mul(speedMult, speedMult, speedMult));
                     }
                 }
-                // return true as handled, unless the Block is configured to also allow the default behaviour
-                return blockcfg.allowNative();
+
+                // Set the callback to cancel if the Block is configured to override the default behaviour.
+                if (!blockcfg.allowNative()) {
+                    callback.cancel();
+                }
             }
         }
-
-        // return true as not handled so that the native behavior will execute
-        return true;
     }
 }

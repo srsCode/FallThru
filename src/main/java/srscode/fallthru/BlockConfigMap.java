@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20191002-11:21:28-0400
+ * Last Modified: 20200817-21:49:01-0400
  *
- * Copyright (c) 2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -50,12 +50,14 @@ import javax.annotation.Nullable;
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 
+import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.material.Material;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.ITag;
 import net.minecraft.tags.Tag;
 import net.minecraft.util.ResourceLocation;
 
@@ -71,7 +73,7 @@ import static srscode.fallthru.FallThru.MARKER_BLOCKCFG;
  * This is an extension of {@link Int2ObjectArrayMap} for better efficiency, since this map is likely to be quite small,
  * and it will have quite a high level of accesses.
  */
-final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
+public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 {
     private static final long serialVersionUID = 4723499327562438886L;
 
@@ -176,17 +178,14 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
     /**
      * A shortcut for {@link #put} that takes a {@link BlockConfig}.
-     * This will also ensure that {@link Block#blocksMovement} is set to <b>false</b>.
+     * This will also ensure that {@link AbstractBlock#canCollide} is set to <b>false</b>.
      *
      * @param blockConfig The BlockConfig object to be added.
      */
     void add(@Nonnull final BlockConfig blockConfig)
     {
         final Block block = blockConfig.getBlock();
-        block.blocksMovement = false;
-        // TODO: Removing the cache and setting variableOpacity may not be required in 1.15 as per https://bugs.mojang.com/browse/MC-161916
-        block.variableOpacity = true;
-        block.getDefaultState().cache = null;
+        block.canCollide = false;
         put(getHash(block), blockConfig);
     }
 
@@ -210,8 +209,7 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     {
         final BlockConfig removed = super.remove(getHash(block));
         if (removed != null) {
-            block.blocksMovement  = removed.blocksMovement();
-            block.variableOpacity = removed.variableOpacity();
+            block.canCollide  = removed.blocksMovement();
             return Optional.of(removed);
         }
         return Optional.empty();
@@ -222,7 +220,8 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      *
      * @param blockConfig The BlockConfig to remove.
      */
-    private void remove(final BlockConfig blockConfig)
+    @SuppressWarnings("unused")
+    void remove(final BlockConfig blockConfig)
     {
         remove(blockConfig.getBlock());
     }
@@ -233,7 +232,7 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      * @param  block The {@link Block} of a BlockConfig to find a key for.
      * @return Whether or not a key exists.
      */
-    boolean hasKey(final Block block)
+    public boolean hasKey(final Block block)
     {
         return containsKey(getHash(block));
     }
@@ -244,7 +243,7 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      * @param  block The Block to retrieve a BlockConfig for.
      * @return An {@link Optional} of the BlockConfig if present, otherwise {@link Optional#empty}
      */
-    Optional<BlockConfig> getConfig(@Nonnull final Block block)
+    public Optional<BlockConfig> getConfig(@Nonnull final Block block)
     {
         return Optional.ofNullable(get(getHash(block)));
     }
@@ -288,7 +287,6 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
         // NBT name constants
         static final String ORIG_BLOCKS_MOVEMENT  = "blocksMovement";
-        static final String ORIG_VARIABLE_OPACITY = "variableOpacity";
 
         // named group constants
         static final String GROUP_ITEMTYPE    = "itemtype";
@@ -371,7 +369,7 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                     break;
 
                 case TAG:
-                    final Tag<Block> tag = BlockTags.getCollection().get(resloc);
+                    final ITag<Block> tag = BlockTags.getCollection().get(resloc);
                     if (tag == null) {
                         FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block Tag not found; Skipping: {}", resloc);
                         return Collections.emptySet();
@@ -404,17 +402,15 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         private final boolean allowNative;
 
         private final boolean blocksMovement;
-        private final boolean variableOpacity;
 
         private BlockConfig(@Nonnull final Block block, final double speedMult, final double damageMult,
-                            final boolean allowNative, final boolean blocksMovement, final boolean variableOpacity)
+                            final boolean allowNative, final boolean blocksMovement)
         {
             this.block           = Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
             this.speedMult       = speedMult;
             this.damageMult      = damageMult;
             this.allowNative     = allowNative;
             this.blocksMovement  = blocksMovement;
-            this.variableOpacity = variableOpacity;
         }
 
         /**
@@ -457,11 +453,6 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             return blocksMovement;
         }
 
-        boolean variableOpacity()
-        {
-            return variableOpacity;
-        }
-
         /**
          * A factory method for creating BlockConfigs.
          *
@@ -473,13 +464,12 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          */
         static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative)
         {
-            return new BlockConfig(block, speedMult, damageMult, allowNative, block.blocksMovement, block.variableOpacity);
+            return new BlockConfig(block, speedMult, damageMult, allowNative, block.canCollide);
         }
 
-        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult,
-                                  final boolean allowNative, final boolean blocksMovement, final boolean variableOpacity)
+        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean blocksMovement)
         {
-            return new BlockConfig(block, speedMult, damageMult, allowNative, blocksMovement, variableOpacity);
+            return new BlockConfig(block, speedMult, damageMult, allowNative, blocksMovement);
         }
 
         /**
@@ -495,7 +485,6 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             ret.putDouble(GROUP_DMGMULT, getDamageMult());
             ret.putBoolean(GROUP_ALLOWNATIVE, allowNative());
             ret.putBoolean(ORIG_BLOCKS_MOVEMENT, blocksMovement());
-            ret.putBoolean(ORIG_VARIABLE_OPACITY, variableOpacity());
             return ret;
         }
 
@@ -513,8 +502,7 @@ final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                 nbt.getDouble(GROUP_SPMULT),
                 nbt.getDouble(GROUP_DMGMULT),
                 nbt.getBoolean(GROUP_ALLOWNATIVE),
-                nbt.getBoolean(ORIG_BLOCKS_MOVEMENT),
-                nbt.getBoolean(ORIG_VARIABLE_OPACITY)
+                nbt.getBoolean(ORIG_BLOCKS_MOVEMENT)
             );
         }
 

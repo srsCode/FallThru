@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : FallThru.java
- * Last Modified: 20200424-04:05:52-0400
+ * Last Modified: 20200817-12:25:55-0400
  *
- * Copyright (c) 2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -80,9 +80,11 @@ public class FallThru
     static final ResourceLocation NET_CHANNEL_NAME = new ResourceLocation(MOD_ID, "config_update");
     static final String           NET_VERSION      = "ftcu-1";
 
-    static final BlockConfigMap  BLOCK_CONFIG_MAP = new BlockConfigMap();
     static final ForgeConfigSpec COMMON_CONFIG_SPEC;
     static final CommonConfig    COMMON_CONFIG;
+
+    // This has to be public for access by AbstractBlockState
+    public static final BlockConfigMap BLOCK_CONFIG_MAP = new BlockConfigMap();
 
     static
     {
@@ -146,7 +148,6 @@ public class FallThru
      *
      * @param event The {@link ModConfig.Reloading} event
      */
-    // TODO: This event was not firing consistently on config file change.
     public void onConfigUpdate(final Reloading event)
     {
         if (event.getConfig().getModId().equals(MOD_ID)) {
@@ -196,7 +197,7 @@ public class FallThru
         BLOCK_CONFIG_MAP.addAll(BLOCK_CONFIG_MAP.parseConfig(COMMON_CONFIG.getPassableBlocks()));
 
         // if this is a dedicated server, dispatch a S2CFallThruUpdatePacket.
-        DistExecutor.runWhenOn(Dist.DEDICATED_SERVER, () -> this::updateAll);
+        DistExecutor.unsafeRunWhenOn(Dist.DEDICATED_SERVER, () -> this::updateAll);
     }
 
     /**

@@ -1,0 +1,13 @@
+{
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_8",
+  "required": true,
+  "verbose": true,
+  "package": "srscode.fallthru.mixin",
+  "mixins": [
+    "AbstractBlockStateMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
