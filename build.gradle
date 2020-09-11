@@ -1,7 +1,7 @@
 buildscript {
     repositories {
         maven { url = 'https://files.minecraftforge.net/maven' }
-        maven { url = 'http://repo.spongepowered.org/maven/'}
+        maven { url = 'https://repo.spongepowered.org/maven/'}
         jcenter()
         mavenCentral()
     }
@@ -36,7 +36,7 @@ tasks.withType(Checkstyle) {
 
 def mixin_file = 'fallthru.mixins.json'
 minecraft {
-    mappings channel: project.mapping_channel, version: project.mapping_version
+    mappings channel: project.mapping_channel, version: '20200820-1.16.1'
     setAccessTransformer sourceSets.main.resources.files.find{ (it.name == 'accesstransformer.cfg') }
     runs {
         client {
@@ -62,6 +62,8 @@ minecraft {
 
 repositories {
     maven { url = 'http://repo.spongepowered.org/maven/'}
+    // temporary for latest mappings via gigaherz
+    maven { url = 'https://www.dogforce-games.com/maven/'}
 }
 
 dependencies {
