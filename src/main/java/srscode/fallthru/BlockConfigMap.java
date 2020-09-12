@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20200817-21:49:01-0400
+ * Last Modified: 20200912-07:08:48-0400
  *
  * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -44,38 +44,53 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
 
-import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.material.Material;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.ITag;
 import net.minecraft.tags.Tag;
 import net.minecraft.util.ResourceLocation;
 
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import srscode.fallthru.BlockConfigMap.BlockConfig;
-
-import static srscode.fallthru.FallThru.MARKER_BLOCKCFG;
+import srscode.fallthru.mixin.Accessors;
 
 /**
  * This {@link Map} class stores {@link BlockConfig} objects using the hashcode of their {@link Block} as keys.
  * This is an extension of {@link Int2ObjectArrayMap} for better efficiency, since this map is likely to be quite small,
  * and it will have quite a high level of accesses.
  */
+@SuppressWarnings("WeakerAccess")
 public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 {
     private static final long serialVersionUID = 4723499327562438886L;
+
+    private static final Marker MARKER_BLOCKCFG = MarkerManager.getMarker("BLOCK CONFIG");
+    private static final String NBT_CONFIG_TAG  = "blocklist";
+
+    private static final Function<String, Block> BLOCK_RESOLVER = cfgblock -> {
+        final ResourceLocation resloc;
+        if ((resloc = ResourceLocation.tryCreate(cfgblock)) != null && ForgeRegistries.BLOCKS.containsKey(resloc)) {
+            return ForgeRegistries.BLOCKS.getValue(resloc);
+        } else {
+            FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block in blacklist does not exist: {}", resloc);
+            return null;
+        }
+    };
 
     private static final transient Collection<Block> BLACKLIST_BLOCKS = new HashSet<>();
 
@@ -92,8 +107,10 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      * This will initialize the {@link Block} blacklist wih hardcoded entries and from
      * the{@link CommonConfig#blacklistBlocks} config setting.
      */
-    void init()
+    void refreshBlacklist()
     {
+        BLACKLIST_BLOCKS.clear();
+
         // Hard blacklist Blocks with specific Material types that should only be handled by vanilla.
         ForgeRegistries.BLOCKS
             .getValues()
@@ -103,7 +120,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
         // Hard blacklist blocks with unique uses, or properties such as unique damage multipliers, that should be handled by vanilla only.
         BLACKLIST_BLOCKS.addAll(Arrays.asList(
-            Blocks.BEDROCK,    Blocks.END_PORTAL_FRAME, Blocks.HAY_BLOCK,      Blocks.SLIME_BLOCK,
+            Blocks.BEDROCK,    Blocks.END_PORTAL_FRAME, Blocks.HAY_BLOCK,      Blocks.SLIME_BLOCK,    Blocks.HONEY_BLOCK,
             Blocks.BLACK_BED,  Blocks.BLUE_BED,         Blocks.BROWN_BED,      Blocks.CYAN_BED,
             Blocks.GRAY_BED,   Blocks.GREEN_BED,        Blocks.LIGHT_BLUE_BED, Blocks.LIGHT_GRAY_BED,
             Blocks.LIME_BED,   Blocks.MAGENTA_BED,      Blocks.ORANGE_BED,     Blocks.PINK_BED,
@@ -112,18 +129,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
         /*
          * Populate the blacklist from CommonConfig#blacklistBlocks
-         * If a config entry does not exist in the Block registry then the registry will
-         * return the default key (minecraft:air) which is already blacklisted, so there's
-         * no reason for any kind of extra checking.
          */
-        BLACKLIST_BLOCKS.addAll(
-            FallThru.COMMON_CONFIG.getBlacklistBlocks()
-                .stream()
-                .map(ResourceLocation::tryCreate)
-                .filter(Objects::nonNull)
-                .map(ForgeRegistries.BLOCKS::getValue)
-                .collect(Collectors.toSet())
-        );
+        BLACKLIST_BLOCKS.addAll(FallThru.config().getBlacklistBlocks().stream().map(BLOCK_RESOLVER).collect(Collectors.toSet()));
     }
 
     /**
@@ -148,6 +155,33 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     }
 
     /**
+     * When this method is called, it will resync this BlockConfigMap with {@link CommonConfig#passableBlocks}
+     * If this is a dedicated server, dispatch a {@link S2CFallThruUpdatePacket}.
+     */
+    void syncLocal()
+    {
+        refreshBlacklist();
+        FallThru.LOGGER.debug(MARKER_BLOCKCFG, "Syncing local config");
+        clear();
+        addAll(parseConfig(FallThru.config().getPassableBlocks()));
+        // if this is a dedicated server, dispatch a S2CFallThruUpdatePacket.
+        DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> NetworkHandler.INSTANCE::updateAll);
+    }
+
+    /**
+     * Syncs this BlockConfigMap from a {@link Collection} of {@link BlockConfig}s passed
+     * from {@link S2CFallThruUpdatePacket#handle}.
+     *
+     * @param blockConfigs A Collection of BlockConfigs.
+     */
+    void syncFromRemote(final CompoundNBT blockConfigs)
+    {
+        FallThru.LOGGER.debug(MARKER_BLOCKCFG, "Syncing from remote config");
+        clear();
+        fromNBT(blockConfigs);
+    }
+
+    /**
      * A serializer to convert all of the {@link BlockConfig}s in this map to a CompoundNBT tag used for network traversal.
      *
      * @return A {@link CompoundNBT} representation of this {@code BlockConfigMap}s contents.
@@ -155,7 +189,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     CompoundNBT toNBT()
     {
         final CompoundNBT ret = new CompoundNBT();
-        ret.put(S2CFallThruUpdatePacket.NBT_CONFIG_TAG, values().stream().map(BlockConfig::toNBT).collect(Collectors.toCollection(ListNBT::new)));
+        ret.put(NBT_CONFIG_TAG, values().stream().map(BlockConfig::toNBT).collect(Collectors.toCollection(ListNBT::new)));
         return ret;
     }
 
@@ -168,7 +202,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     {
         addAll(
             blocklist
-                .getList(S2CFallThruUpdatePacket.NBT_CONFIG_TAG, Constants.NBT.TAG_COMPOUND)
+                .getList(NBT_CONFIG_TAG, Constants.NBT.TAG_COMPOUND)
                 .stream()
                 .map(CompoundNBT.class::cast)
                 .map(BlockConfig::fromNBT)
@@ -178,15 +212,13 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
     /**
      * A shortcut for {@link #put} that takes a {@link BlockConfig}.
-     * This will also ensure that {@link AbstractBlock#canCollide} is set to <b>false</b>.
      *
      * @param blockConfig The BlockConfig object to be added.
      */
     void add(@Nonnull final BlockConfig blockConfig)
     {
-        final Block block = blockConfig.getBlock();
-        block.canCollide = false;
-        put(getHash(block), blockConfig);
+        put(getHash(blockConfig.getBlock()), blockConfig);
+        updateBlock(blockConfig, true);
     }
 
     /**
@@ -209,7 +241,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     {
         final BlockConfig removed = super.remove(getHash(block));
         if (removed != null) {
-            block.canCollide  = removed.blocksMovement();
+            updateBlock(removed, false);
             return Optional.of(removed);
         }
         return Optional.empty();
@@ -224,6 +256,19 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     void remove(final BlockConfig blockConfig)
     {
         remove(blockConfig.getBlock());
+    }
+
+    /**
+     *  A helper method for updating blocks upon being added or removed. This is dependent on the {@link Accessors.AbstractBlockStateAccessor} mixin.
+     *
+     *  @param blockConfig The BlockConfig of the block being added or removed.
+     *  @param adding      A boolean signifying if this BlockConfig is being added or removed. (true = added, false = removed)
+     */
+    private void updateBlock(final BlockConfig blockConfig, final boolean adding)
+    {
+        final Block block = blockConfig.getBlock();
+        ((Accessors.AbstractBlockAccessor)block).setCanCollide(!adding && blockConfig.canCollide());
+        ((Accessors.AbstractBlockStateAccessor)block.getDefaultState()).setIsSolid(!adding && blockConfig.isSolid());
     }
 
     /**
@@ -286,7 +331,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         }
 
         // NBT name constants
-        static final String ORIG_BLOCKS_MOVEMENT  = "blocksMovement";
+        static final String ORIG_CAN_COLLIDE = "canCollide";
+        static final String ORIG_IS_SOLID    = "isSolid";
 
         // named group constants
         static final String GROUP_ITEMTYPE    = "itemtype";
@@ -345,48 +391,50 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             final Matcher matcher = Pattern.compile(BlockConfig.PATTERN_CFGSTR, Pattern.CASE_INSENSITIVE).matcher(cfgstr);
             matcher.matches();
 
-            final ResourceLocation resloc = new ResourceLocation(matcher.group(BlockConfig.GROUP_RESLOC));
+            final BlockConfig.ItemType type = BlockConfig.ItemType.get(matcher.group(BlockConfig.GROUP_ITEMTYPE));
+            if (type == null) {
+                FallThru.LOGGER.error(MARKER_BLOCKCFG, "Illegal entry type. Entry must begin with 'block/' or 'tag/'; Skipping: {}", matcher.group(BlockConfig.GROUP_ITEMTYPE));
+                return Collections.emptySet();
+            }
+            final ResourceLocation resloc = ResourceLocation.tryCreate(matcher.group(BlockConfig.GROUP_RESLOC));
+            if (resloc == null) {
+                FallThru.LOGGER.error(MARKER_BLOCKCFG, "Illegal ResourceLocation for config entry; Skipping: {}", matcher.group(BlockConfig.GROUP_RESLOC));
+                return Collections.emptySet();
+            }
             final double  spmult   = Double.parseDouble(matcher.group(BlockConfig.GROUP_SPMULT));
             final double  dmgmult  = Double.parseDouble(matcher.group(BlockConfig.GROUP_DMGMULT));
             // If a boolean value wasn't provided for native handling, default to 'false' (prevent native handling).
             final boolean allowdef = matcher.group(BlockConfig.GROUP_ALLOWNATIVE) != null && Boolean.parseBoolean(matcher.group(BlockConfig.GROUP_ALLOWNATIVE));
 
-            final Set<Block> blocks = Sets.newHashSet();
-            final BlockConfig.ItemType type = Objects.requireNonNull(BlockConfig.ItemType.get(matcher.group(BlockConfig.GROUP_ITEMTYPE)));
+            final Collection<Block> blocks = Sets.newHashSet();
             switch (type) {
                 case BLOCK:
-                    final Block cfgblock = ForgeRegistries.BLOCKS.getValue(resloc);
-                    if (cfgblock != null) {
-                        if (!Objects.requireNonNull(cfgblock.getRegistryName()).equals(resloc)) {
-                            FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block not found in the Block registry; Skipping: {}", resloc);
-                            return Collections.emptySet();
-                        } else if (BLACKLIST_BLOCKS.contains(cfgblock)) {
-                            FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block is blacklisted; Skipping: {}", cfgblock.getRegistryName());
-                            return Collections.emptySet();
-                        }
+                    final Block cfgblock;
+                    if (!ForgeRegistries.BLOCKS.containsKey(resloc)) {
+                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block not found in the Block registry; Skipping: {}", resloc);
+                    } else if (BLACKLIST_BLOCKS.contains((cfgblock = ForgeRegistries.BLOCKS.getValue(resloc)))) {
+                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block is blacklisted; Skipping: {}", resloc);
+                    } else {
+                        blocks.add(cfgblock);
                     }
-                    blocks.add(cfgblock);
                     break;
 
                 case TAG:
-                    final ITag<Block> tag = BlockTags.getCollection().get(resloc);
-                    if (tag == null) {
-                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block Tag not found; Skipping: {}", resloc);
-                        return Collections.emptySet();
-                    } else if (tag.getAllElements().isEmpty()) {
-                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block Tag does not contain any Blocks; Skipping: {}", resloc);
-                        return Collections.emptySet();
-                    } else {
-                        blocks.addAll(tag.getAllElements().stream()
-                                .filter(b -> {
-                                    if (BLACKLIST_BLOCKS.contains(b)) {
-                                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block is blacklisted; Skipping: {}", b.getRegistryName());
-                                        return false;
-                                    }
-                                    return true;
-                                })
-                            .collect(Collectors.toSet()));
+                    final Collection<Block> tagBlocks = ForgeRegistries.BLOCKS.getValues().stream()
+                        .filter(tagBlock -> tagBlock.getTags().contains(resloc))
+                        .filter(tagBlock -> {
+                            if (BLACKLIST_BLOCKS.contains(tagBlock)) {
+                                FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block is blacklisted; Skipping: {}", tagBlock.getRegistryName());
+                                return false;
+                            } else {
+                                return true;
+                            }
+                        })
+                        .collect(Collectors.toSet());
+                    if (tagBlocks.isEmpty()) {
+                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Could not find any blocks for Tag, or Tag does not exist: {}", resloc);
                     }
+                    blocks.addAll(tagBlocks);
                     break;
             }
 
@@ -400,17 +448,17 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         private final double  speedMult;
         private final double  damageMult;
         private final boolean allowNative;
+        private final boolean canCollide;
+        private final boolean isSolid;
 
-        private final boolean blocksMovement;
-
-        private BlockConfig(@Nonnull final Block block, final double speedMult, final double damageMult,
-                            final boolean allowNative, final boolean blocksMovement)
+        private BlockConfig(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean canCollide, final boolean isSolid)
         {
-            this.block           = Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
-            this.speedMult       = speedMult;
-            this.damageMult      = damageMult;
-            this.allowNative     = allowNative;
-            this.blocksMovement  = blocksMovement;
+            this.block       = Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
+            this.speedMult   = speedMult;
+            this.damageMult  = damageMult;
+            this.allowNative = allowNative;
+            this.canCollide  = canCollide;
+            this.isSolid     = isSolid;
         }
 
         /**
@@ -443,33 +491,60 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             return damageMult;
         }
 
+        /**
+         *  Allow the native collision handling for this block also execute.
+         */
         boolean allowNative()
         {
             return allowNative;
         }
 
-        boolean blocksMovement()
+        /**
+         *  The original value of <tt>AbstractBlock#canCollide</tt> for this block.
+         */
+        boolean canCollide()
         {
-            return blocksMovement;
+            return canCollide;
+        }
+
+        /**
+         *  The original value of <tt>AbstractBlockState#isSolid</tt> for the default state of this block.
+         */
+        boolean isSolid()
+        {
+            return isSolid;
         }
 
         /**
          * A factory method for creating BlockConfigs.
          *
-         * @param  block        The Block.
-         * @param  speedMult    The speed multiplier.
-         * @param  damageMult   The damage multiplier.
+         * @param  block       The Block.
+         * @param  speedMult   The speed multiplier.
+         * @param  damageMult  The damage multiplier.
          * @param  allowNative Allow default collision handling.
-         * @return              A new BlockConfig.
+         * @return             A new BlockConfig.
          */
         static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative)
         {
-            return new BlockConfig(block, speedMult, damageMult, allowNative, block.canCollide);
+            return new BlockConfig(block, speedMult, damageMult, allowNative,
+                ((Accessors.AbstractBlockAccessor)block).getCanCollide(),
+                ((Accessors.AbstractBlockStateAccessor)block.getDefaultState()).getIsSolid());
         }
 
-        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean blocksMovement)
+        /**
+         * A factory method for creating BlockConfigs.
+         *
+         * @param  block       The Block.
+         * @param  speedMult   The speed multiplier.
+         * @param  damageMult  The damage multiplier.
+         * @param  allowNative Allow default collision handling.
+         * @param  canCollide  The original block value of canCollide.
+         * @param  isSolid     The original blockstate value of isSolid.
+         * @return             A new BlockConfig.
+         */
+        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean canCollide, final boolean isSolid)
         {
-            return new BlockConfig(block, speedMult, damageMult, allowNative, blocksMovement);
+            return new BlockConfig(block, speedMult, damageMult, allowNative, canCollide, isSolid);
         }
 
         /**
@@ -484,7 +559,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             ret.putDouble(GROUP_SPMULT, getSpeedMult());
             ret.putDouble(GROUP_DMGMULT, getDamageMult());
             ret.putBoolean(GROUP_ALLOWNATIVE, allowNative());
-            ret.putBoolean(ORIG_BLOCKS_MOVEMENT, blocksMovement());
+            ret.putBoolean(ORIG_CAN_COLLIDE, canCollide());
+            ret.putBoolean(ORIG_IS_SOLID, isSolid());
             return ret;
         }
 
@@ -502,7 +578,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                 nbt.getDouble(GROUP_SPMULT),
                 nbt.getDouble(GROUP_DMGMULT),
                 nbt.getBoolean(GROUP_ALLOWNATIVE),
-                nbt.getBoolean(ORIG_BLOCKS_MOVEMENT)
+                nbt.getBoolean(ORIG_CAN_COLLIDE),
+                nbt.getBoolean(ORIG_IS_SOLID)
             );
         }
 

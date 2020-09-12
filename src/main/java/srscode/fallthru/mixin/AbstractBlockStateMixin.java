@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : AbstractBlockStateMixin.java
- * Last Modified: 20200816-21:28:41-0400
+ * Last Modified: 20200912-06:18:15-0400
  *
  * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -36,18 +36,22 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.pathfinding.PathType;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
 
 import srscode.fallthru.FallThru;
 import srscode.fallthru.RedirectionHandler;
 
+/**
+ *  This mixin provides:
+ *  1. The redirect to the FallThru RedirectionHandler to handle collision for configured blocks.
+ *  2. A patch to help entity AI pathfind so that entities will avoid configured blocks.
+ */
 @SuppressWarnings("AbstractClassNeverImplemented")
 @Mixin(net.minecraft.block.AbstractBlock.AbstractBlockState.class)
 public abstract class AbstractBlockStateMixin
@@ -57,28 +61,27 @@ public abstract class AbstractBlockStateMixin
 
     @Shadow protected abstract BlockState getSelf();
 
-    // AbstractBlockState#onEntityCollision patch to handle collision with configured blocks.
+    /**
+     *  A patch for <tt>net.minecraft.block.AbstractBlock.AbstractBlockState#onEntityCollision</tt>
+     *  to redirect collision handing to the FallThru RedirectionHandler.
+     *
+     *  @param callback will be set to cancel unless the native collision handling should also execute.
+     */
     @Inject(at = @At("HEAD"), cancellable = true, method = "onEntityCollision(Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/entity/Entity;)V")
     private void onEntityCollision(final World world, final BlockPos pos, final Entity entity, final CallbackInfo callback)
     {
-        RedirectionHandler.handleCollision(world, pos, entity, this.getSelf(), callback);
-    }
-
-    /**
-     *  This redirect prevents entities from being pushed out of configured blocks that have full a {@link VoxelShape}.
-     *  {@link AbstractBlock.AbstractBlockState#hasOpaqueCollisionShape} has to be targetted instead of
-     *  {@link AbstractBlock.AbstractBlockState#getCollisionShape} because of the relevant VoxelShape being cached within
-     *  the AbstractBlock.AbstractBlockState#cache.
-     */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "hasOpaqueCollisionShape(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;)Z")
-    public void hasOpaqueCollisionShape(final IBlockReader reader, final BlockPos pos, final CallbackInfoReturnable<Boolean> callback)
-    {
-        if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.getSelf().getBlock())) {
-            callback.setReturnValue(false);
+        if (entity instanceof LivingEntity) {
+            FallThru.BLOCK_CONFIG_MAP.getConfig(this.getSelf().getBlock())
+                .ifPresent(blockConfig -> RedirectionHandler.handleCollision(world, pos, (LivingEntity)entity, this.getSelf(), blockConfig, callback));
         }
     }
 
-    // Patch for pathfinding. TODO: Requires verification that this actually works properly.
+    /**
+     *  A patch for pathfinding to prevent entities from pathfinding through passable blocks.
+     *
+     *  @param callback will always be set to <tt>true</tt> for configured blocks, preventing native functionality.
+     */
+    // TODO: Suggested by Deximus-Maximus. Requires verification that this actually works properly.
     @Inject(at = @At("HEAD"), cancellable = true, method = "allowsMovement(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathType;)Z")
     private void allowsMovement(final IBlockReader world, final BlockPos pos, final PathType type, final CallbackInfoReturnable<Boolean> callback)
     {

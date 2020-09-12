@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : RedirectionHandler.java
- * Last Modified: 20200802-09:34:22-0400
+ * Last Modified: 20200912-09:22:18-0400
  *
  * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -29,10 +29,8 @@
 
 package srscode.fallthru;
 
-import java.util.Optional;
 import java.util.Random;
-import java.util.function.BiPredicate;
-import java.util.function.Predicate;
+
 import javax.annotation.Nonnull;
 
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -40,7 +38,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
@@ -56,50 +53,39 @@ import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
 
-import net.minecraftforge.fml.ForgeI18n;
-
 import srscode.fallthru.BlockConfigMap.BlockConfig;
+import srscode.fallthru.mixin.Accessors;
 
 /**
  * A class to handle the collision of {@link Entity}s with {@link BlockState}s in the world.
  */
-@SuppressWarnings("unused")
 public final class RedirectionHandler
 {
     private RedirectionHandler() {}
 
-    private static final String DAMAGETYPE_LEAVES = "fallintoleaves";
-    private static final String DAMAGETYPE_SNOW   = "fallintosnow";
-    private static final DamageSource DMGSRC_LEAVES = new DamageSource(DAMAGETYPE_LEAVES) {
+    private static final String       DAMAGETYPE_LEAVES = "fallintoleaves";
+    private static final String       DAMAGETYPE_SNOW   = "fallintosnow";
+    private static final DamageSource DMGSRC_LEAVES     = new DamageSource(DAMAGETYPE_LEAVES) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_LEAVES;
         @Nonnull
         @Override public ITextComponent getDeathMessage(@Nonnull final LivingEntity entity)
         {
-            return ForgeI18n.getPattern(LANG_KEY).equals(LANG_KEY)
-                   ? entity.getDisplayName().copyRaw().appendString(" fell into leaves and was impaled by branches")
-                   : new TranslationTextComponent(LANG_KEY, entity.getDisplayName());
+            return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " fell into leaves and was impaled by branches");
         }
     }.setDamageBypassesArmor();
-    private static final DamageSource DMGSRC_SNOW = new DamageSource(DAMAGETYPE_SNOW) {
+    private static final DamageSource DMGSRC_SNOW       = new DamageSource(DAMAGETYPE_SNOW) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_SNOW;
         @Nonnull
         @Override public ITextComponent getDeathMessage(@Nonnull final LivingEntity entity)
         {
-            return ForgeI18n.getPattern(LANG_KEY).equals(LANG_KEY)
-                   ? entity.getDisplayName().copyRaw().appendString(" got packed into a snowball")
-                   : new TranslationTextComponent(LANG_KEY, entity.getDisplayName());
+            return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " got packed into a snowball");
         }
     }.setDamageBypassesArmor();
-
-    private static final BiPredicate<IBlockReader, BlockPos> BREAKABLE_FILTER = (world, filterpos) -> {
-        final Block b = world.getBlockState(filterpos).getBlock();
-        return b != Blocks.AIR && FallThru.BLOCK_CONFIG_MAP.hasKey(b);
-    };
-    private static final Predicate<Integer> GET_RANDOM = bound -> new Random().nextInt(Math.max(bound, 1)) == 0;
+    private static final Random       RANDOM            = new Random();
+    // TODO: Maybe add a config setting for the chance to break blocks
+    private static final int          BREAK_CHANCE      = 3;
 
     /**
      * This method determines if an {@link LivingEntity} is moving based on the Vec3d from {@link Entity#getMotion}, adjusting
@@ -172,76 +158,68 @@ public final class RedirectionHandler
      * @param  blockState The {@link BlockState} of the block being collided with.
      * @param  callback   The {@link CallbackInfo} object to handle the return state
      */
-    public static void handleCollision(final World world, final BlockPos pos, final Entity entity, final BlockState blockState, final CallbackInfo callback)
+    public static void handleCollision(final World world, final BlockPos pos, final LivingEntity entity, final BlockState blockState, final BlockConfig blockConfig, final CallbackInfo callback)
     {
-        if (entity instanceof LivingEntity) {
-            final Optional<BlockConfig> maybeBlockcfg = FallThru.BLOCK_CONFIG_MAP.getConfig(blockState.getBlock());
-            if (maybeBlockcfg.isPresent()) {
-
-                final BlockConfig   blockcfg = maybeBlockcfg.get();
-                final LivingEntity  living   = (LivingEntity) entity;
-                final AxisAlignedBB entitybb = entity.getBoundingBox();
-                final VoxelShape    blockvs  = blockState.getShape(world, pos);
-                final AxisAlignedBB blockbb  = blockvs.isEmpty() ? VoxelShapes.fullCube().getBoundingBox() : blockvs.getBoundingBox().offset(pos);
-                // shrink the entity bounding box a bit so that it has to be more inside of a block to trigger collisions
-                if (entitybb.grow(-0.1, 0, -0.1).intersects(blockbb)) {
-                    // handle falling into blocks
-                    final SoundType soundtype = blockState.getSoundType();
-                    if (living.fallDistance > 3f) {
-                        living.playSound(soundtype.getBreakSound(), soundtype.getVolume(), soundtype.getPitch() * 0.65f);
-                        final int dmgThresh = FallThru.COMMON_CONFIG.damageThreshold.get();
-                        if (living.fallDistance > 3f + dmgThresh) {
-                            final EffectInstance jbeffect = living.getActivePotionEffect(Effects.JUMP_BOOST);
-                            final double jumpBoost = jbeffect == null ? 0.0 : jbeffect.getAmplifier() + 1;
-                            final double dmgMult   = blockcfg.getDamageMult();
-                            final double damage    = getDamage(living.fallDistance, dmgThresh, jumpBoost, dmgMult);
-                            if (damage > 0) {
-                                living.attackEntityFrom(getDamageSource(blockState), (float)damage);
-                                if (living.isBeingRidden()) {
-                                    // recursive call for riders
-                                    living.getRecursivePassengers().forEach(ent ->
-                                        ent.attackEntityFrom(getDamageSource(blockState), (float)(damage * 0.8)));
-                                }
-                            }
-
-                            // handle block breaking
-                            final boolean creative = living instanceof PlayerEntity && ((PlayerEntity)living).isCreative();
-                            final boolean negationEffect = living.getActivePotionEffect(Effects.LEVITATION) != null | living.getActivePotionEffect(Effects.SLOW_FALLING) != null;
-                            if (!world.isRemote && !creative && FallThru.COMMON_CONFIG.doBlockBreaking.get() && !negationEffect) {
-                                // slightly attenuate the entity bounding box to below the entity for block breaking
-                                final AxisAlignedBB breakbb = entitybb.offset(0, -0.5, 0);
-                                BlockPos.getAllInBox(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
-                                    .filter(filtpos -> BREAKABLE_FILTER.test(world, filtpos))
-                                    // TODO: Maybe add a config setting for the chance to break blocks
-                                    .filter(ignored -> GET_RANDOM.test(3))
-                                    .forEach(despos -> world.destroyBlock(despos, true));
-                            }
+        final AxisAlignedBB entitybb = entity.getBoundingBox();
+        final VoxelShape    blockvs  = blockState.getShape(world, pos);
+        final AxisAlignedBB blockbb  = blockvs.isEmpty() ? VoxelShapes.fullCube().getBoundingBox() : blockvs.getBoundingBox().offset(pos);
+        // shrink the entity bounding box a bit so that it has to be more inside of a block to trigger collisions
+        if (entitybb.grow(-0.1, 0, -0.1).intersects(blockbb)) {
+            // handle falling into blocks
+            final SoundType soundtype = blockState.getSoundType();
+            if (entity.fallDistance > 3f) {
+                entity.playSound(soundtype.getBreakSound(), soundtype.getVolume(), soundtype.getPitch() * 0.65f);
+                final int dmgThresh = FallThru.config().damageThreshold.get();
+                if (entity.fallDistance > 3f + dmgThresh) {
+                    final EffectInstance jbeffect = entity.getActivePotionEffect(Effects.JUMP_BOOST);
+                    final double damage = getDamage(entity.fallDistance, dmgThresh, (jbeffect == null ? 0.0 : jbeffect.getAmplifier() + 1), blockConfig.getDamageMult());
+                    if (damage > 0) {
+                        entity.attackEntityFrom(getDamageSource(blockState), (float) damage);
+                        if (entity.isBeingRidden()) {
+                            // recursive call for riders
+                            entity.getRecursivePassengers().forEach(ent -> ent.attackEntityFrom(getDamageSource(blockState), (float) (damage * 0.8)));
                         }
                     }
 
-                    // decay fall distance
-                    final double speedMult = blockcfg.getSpeedMult();
-                    living.fallDistance = living.fallDistance > 3.0f ? living.fallDistance * (float) speedMult : 0f;
-
-                    // handle collision sounds; Only play sounds if the entity is moving; once every 5 ticks.
-                    final Vector3d motion = living.getMotion();
-                    if (isMoving(motion) && world.getGameTime() % 5 == 0) {
-                        living.playSound(soundtype.getStepSound(), soundtype.getVolume(), soundtype.getPitch() * 0.75f);
+                    // handle block breaking
+                    final boolean creative = entity instanceof PlayerEntity && ((PlayerEntity) entity).isCreative();
+                    final boolean negationEffect = entity.getActivePotionEffect(Effects.LEVITATION) != null | entity.getActivePotionEffect(Effects.SLOW_FALLING) != null;
+                    if (!world.isRemote && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
+                        // slightly attenuate the entity bounding box to below the entity for block breaking
+                        final AxisAlignedBB breakbb = entitybb.offset(0, -0.2, 0);
+                        BlockPos.getAllInBox(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
+                            .filter(filtpos -> {
+                                final BlockState blockstate = world.getBlockState(filtpos);
+                                return blockstate.getMaterial() != Material.AIR
+                                    && FallThru.BLOCK_CONFIG_MAP.hasKey(blockstate.getBlock())
+                                    && RANDOM.nextInt(BREAK_CHANCE) == 0;
+                            })
+                            .forEach(despos -> world.destroyBlock(despos, true));
                     }
-
-                    // reduce motion based on BlockConfig properties; allow jumping entities to be able to jump 1 block high
-                    if (living.isJumping) {
-                        living.setMotion(motion.mul(Math.sqrt(speedMult), 1.0, Math.sqrt(speedMult)));
-                    } else {
-                        living.setMotion(motion.mul(speedMult, speedMult, speedMult));
-                    }
-                }
-
-                // Set the callback to cancel if the Block is configured to override the default behaviour.
-                if (!blockcfg.allowNative()) {
-                    callback.cancel();
                 }
             }
+
+            // decay fall distance
+            final double speedMult = blockConfig.getSpeedMult();
+            entity.fallDistance = entity.fallDistance > 3.0f ? entity.fallDistance * (float) speedMult : 0f;
+
+            // handle collision sounds; Only play sounds if the entity is moving; once every 5 ticks.
+            final Vector3d motion = entity.getMotion();
+            if (isMoving(motion) && world.getGameTime() % 5 == 0) {
+                entity.playSound(soundtype.getStepSound(), soundtype.getVolume(), soundtype.getPitch() * 0.75f);
+            }
+
+            // reduce motion based on BlockConfig properties; allow jumping entities to be able to jump 1 block high
+            if (((Accessors.LivingEntityAccessor) entity).getIsJumping()) {
+                entity.setMotion(motion.mul(Math.sqrt(speedMult), 1.0, Math.sqrt(speedMult)));
+            } else {
+                entity.setMotion(motion.mul(speedMult, speedMult, speedMult));
+            }
+        }
+
+        // Set the callback to cancel if the Block is configured to override the default behaviour.
+        if (!blockConfig.allowNative()) {
+            callback.cancel();
         }
     }
 }

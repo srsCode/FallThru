@@ -5,6 +5,10 @@
   "verbose": true,
   "package": "srscode.fallthru.mixin",
   "mixins": [
+    "Accessors$AbstractBlockAccessor",
+    "Accessors$AbstractBlockStateAccessor",
+    "Accessors$LivingEntityAccessor",
+    "AbstractBlockPropertiesMixin",
     "AbstractBlockStateMixin"
   ],
   "injectors": {

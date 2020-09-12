@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : S2CFallThruUpdatePacket.java
- * Last Modified: 20190914-03:07:06-0400
+ * Last Modified: 20200908-10:50:27-0400
  *
  * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -42,11 +42,6 @@ import net.minecraftforge.fml.network.NetworkEvent;
  */
 final class S2CFallThruUpdatePacket
 {
-    /**
-     * The main NBT name for the list of BlockConfigs in the serialized BlockConfigMap CompoundNBT object.
-     */
-    static final String NBT_CONFIG_TAG = "blocklist";
-
     /**
      * The serialized {@link BlockConfigMap} to be sent to a client.
      */
@@ -91,8 +86,8 @@ final class S2CFallThruUpdatePacket
      */
     static void handle(final S2CFallThruUpdatePacket packet, final Supplier<NetworkEvent.Context> ctx)
     {
-        FallThru.LOGGER.debug(FallThru.MARKER_NETWORK, "Enqueuing config synchronization from the server");
-        ctx.get().enqueueWork(() -> FallThru.getInstance().syncFromRemote(packet.configBlocks));
+        FallThru.LOGGER.debug(NetworkHandler.MARKER_NETWORK, "Enqueuing config synchronization from the server");
+        ctx.get().enqueueWork(() -> FallThru.BLOCK_CONFIG_MAP.syncFromRemote(packet.configBlocks));
         ctx.get().setPacketHandled(true);
     }
 }

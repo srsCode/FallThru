@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : CommonConfig.java
- * Last Modified: 20200713-21:43:16-0400
+ * Last Modified: 20200912-09:09:48-0400
  *
  * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -36,13 +36,20 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.ResourceLocation;
 
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.ForgeConfigSpec.BooleanValue;
 import net.minecraftforge.common.ForgeConfigSpec.Builder;
 import net.minecraftforge.common.ForgeConfigSpec.ConfigValue;
 import net.minecraftforge.common.ForgeConfigSpec.IntValue;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 
 import srscode.fallthru.BlockConfigMap.BlockConfig;
 
@@ -51,19 +58,13 @@ import srscode.fallthru.BlockConfigMap.BlockConfig;
  */
 final class CommonConfig
 {
+    private static final Marker MARKER_CONFIG                   = MarkerManager.getMarker("CONFIG");
     private static final String LANGKEY_CONFIG                  = "config";
     private static final String LANGKEY_SETTING_BLOCKBREAK      = "doBlockBreaking";
     private static final String LANGKEY_SETTING_DAMAGETHRESHOLD = "damageThreshold";
     private static final String LANGKEY_SETTING_PASSABLEBLOCKS  = "passableBlocks";
     private static final String LANGKEY_SETTING_BLACKLISTBLOCKS = "blacklistBlocks";
-    private static final Predicate<Object> RESLOC_VALIDATOR     = s -> {
-        if (s instanceof String && ResourceLocation.tryCreate((String)s) != null) {
-            return true;
-        } else {
-            FallThru.LOGGER.error(FallThru.MARKER_CONFIG, "Invalid ResourceLocation for blacklist: {}", s);
-            return false;
-        }
-    };
+    private static final Predicate<Object> RESLOC_VALIDATOR     = s -> s instanceof String && ResourceLocation.tryCreate((String) s) != null;
 
     final IntValue     damageThreshold;
     final BooleanValue doBlockBreaking;
@@ -147,7 +148,7 @@ final class CommonConfig
                 "",
                 "  The default blacklisted Blocks are as fallows:",
                 "    All blocks of the Material types: AIR, BUBBLE_COLUMN, FIRE, PISTON, PORTAL, STRUCTURE_VOID",
-                "    Other Blocks: minecraft:bedrock, minecraft:end_portal_frame, minecraft:hay_block, minecraft:slime_block, all beds"
+                "    Other Blocks: minecraft:bedrock, minecraft:end_portal_frame, minecraft:hay_block, minecraft:slime_block, minecraft:honey_block, all beds"
             )
             .translation(getLangKey(LANGKEY_CONFIG, LANGKEY_SETTING_BLACKLISTBLOCKS))
             .defineList(LANGKEY_SETTING_BLACKLISTBLOCKS, Collections.emptyList(), RESLOC_VALIDATOR);
@@ -168,11 +169,35 @@ final class CommonConfig
 
     Collection<String> getPassableBlocks()
     {
-        return passableBlocks.get().stream().map(CharSequence::toString).collect(Collectors.toList());
+        return passableBlocks.get().stream().map(CharSequence::toString).collect(Collectors.toSet());
     }
 
     Collection<String> getBlacklistBlocks()
     {
-        return blacklistBlocks.get().stream().map(CharSequence::toString).collect(Collectors.toList());
+        return blacklistBlocks.get().stream().map(CharSequence::toString).collect(Collectors.toSet());
     }
+
+    /**
+     * This Event handler syncs the {@link BlockConfigMap} with {@link CommonConfig#passableBlocks}.
+     * This fires when the config file has been changed on disk and only updates on the client if
+     * the client is <b>not</b> connected to a remote server (the client should <b>not</b> override
+     * it's current BlockConfigMap that was sent to it from the remote server), or if the integrated
+     * server <b>is</b> running, since Tags won't be populated from datapacks atleast until the server
+     * is starting, at which time the syncing will occur.
+     * This will always cause syncing on a dedicated server that will propogate to clients.
+     *
+     * @param event The {@link ModConfig.Reloading} event
+     */
+    void onConfigUpdate(final ModConfig.Reloading event)
+    {
+        if (event.getConfig().getModId().equals(FallThru.MOD_ID)) {
+            if (FMLEnvironment.dist == Dist.CLIENT && (Minecraft.getInstance().getIntegratedServer() == null || Minecraft.getInstance().getConnection() != null)) {
+                FallThru.LOGGER.debug(CommonConfig.MARKER_CONFIG, "The config file has changed but the integrated server is not running. Nothing to do.");
+            } else {
+                FallThru.LOGGER.debug(CommonConfig.MARKER_CONFIG, "The config file has changed and the server is running. Resyncing config.");
+                FallThru.BLOCK_CONFIG_MAP.syncLocal();
+            }
+        }
+    }
+
 }
