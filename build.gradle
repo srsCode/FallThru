@@ -34,9 +34,10 @@ tasks.withType(Checkstyle) {
     reports.html.enabled true
 }
 
+sourceSets.main.ext.refMap = "fallthru.refmap.json"
 def mixin_file = 'fallthru.mixins.json'
 minecraft {
-    mappings channel: project.mapping_channel, version: '20200820-1.16.1'
+    mappings channel: project.mapping_channel, version: project.mapping_version
     runs {
         client {
             taskName 'fallthruClient'
@@ -61,8 +62,6 @@ minecraft {
 
 repositories {
     maven { url = 'http://repo.spongepowered.org/maven/'}
-    // temporary for latest mappings via gigaherz
-    maven { url = 'https://www.dogforce-games.com/maven/'}
 }
 
 dependencies {
