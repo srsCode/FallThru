@@ -3,6 +3,7 @@
   "compatibilityLevel": "JAVA_8",
   "required": true,
   "verbose": true,
+  "refmap": "fallthru.refmap.json",
   "package": "srscode.fallthru.mixin",
   "mixins": [
     "Accessors$AbstractBlockAccessor",
