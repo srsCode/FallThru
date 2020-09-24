@@ -14,7 +14,6 @@ plugins { id 'org.ajoberstar.reckon' version '0.11.0' }
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'checkstyle'
-apply plugin: 'maven-publish'
 if (file('../.etc/srscode-MC.gradle').exists()) { apply from:'../.etc/srscode-MC.gradle' }
 
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
@@ -66,10 +65,9 @@ repositories {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${project.mc_version}-${project.forge_version}"
-    annotationProcessor 'org.spongepowered:mixin:0.8.1-SNAPSHOT:processor'
+    annotationProcessor "org.spongepowered:mixin:${project.mixinAP_version}:processor"
 }
 
-def timestamp = java.time.OffsetDateTime.now() as String
 setGroup 'de.srsco'
 jar {
     from 'LICENCE.txt'
@@ -80,28 +78,8 @@ jar {
         'Implementation-Vendor'   : "${project.vendor}",
         'Implementation-Title'    : "${project.name}",
         'Implementation-Version'  : "${project.version}",
-        'Implementation-Timestamp': timestamp,
+        'Implementation-Timestamp': java.time.OffsetDateTime.now() as String,
         'MixinConfigs'            : mixin_file,
         'Maven-Artifact'          : "${project.group}:${archivesBaseName}:${project.version}"
     ])
-}
-
-publish.dependsOn(jar)
-publishing {
-    publications {
-        fallthru(MavenPublication) {
-            groupId = project.group
-            artifact jar
-            pom {
-                artifactId = project.archivesBaseName
-                name = project.name
-            }
-        }
-    }
-    repositories {
-        maven {
-            // only publish to local maven for now
-            mavenLocal()
-        }
-    }
 }
