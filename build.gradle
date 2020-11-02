@@ -79,7 +79,6 @@ jar {
         'Implementation-Title'    : "${project.name}",
         'Implementation-Version'  : "${project.version}",
         'Implementation-Timestamp': java.time.OffsetDateTime.now() as String,
-        'MixinConfigs'            : mixin_file,
-        'Maven-Artifact'          : "${project.group}:${archivesBaseName}:${project.version}"
+        'MixinConfigs'            : mixin_file
     ])
 }
