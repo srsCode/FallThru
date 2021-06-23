@@ -10,7 +10,8 @@
     "Accessors$AbstractBlockStateAccessor",
     "Accessors$LivingEntityAccessor",
     "AbstractBlockPropertiesMixin",
-    "AbstractBlockStateMixin"
+    "AbstractBlockStateMixin",
+    "WalkNodeProcessorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

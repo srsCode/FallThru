@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20200912-07:08:48-0400
+ * Last Modified: 20210325-02:59:27-0400
  *
- * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -465,7 +465,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          *
          * @return The Block
          */
-        Block getBlock()
+        public Block getBlock()
         {
             return block;
         }
@@ -475,7 +475,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          *
          * @return the speed multiplier
          */
-        double getSpeedMult()
+        public double getSpeedMult()
         {
             return speedMult;
         }
@@ -485,7 +485,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          *
          * @return the damage multiplier
          */
-        double getDamageMult()
+        public double getDamageMult()
         {
             return damageMult;
         }

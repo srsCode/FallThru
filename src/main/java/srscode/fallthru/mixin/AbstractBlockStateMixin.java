@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : AbstractBlockStateMixin.java
- * Last Modified: 20200912-06:18:15-0400
+ * Last Modified: 20210326-07:16:59-0400
  *
- * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -41,6 +41,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.pathfinding.PathType;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.shapes.VoxelShape;
+import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
 
@@ -50,13 +52,13 @@ import srscode.fallthru.RedirectionHandler;
 /**
  *  This mixin provides:
  *  1. The redirect to the FallThru RedirectionHandler to handle collision for configured blocks.
- *  2. A patch to help entity AI pathfind so that entities will avoid configured blocks.
+ *  2. A patch to help entity AI pathfind through configured blocks.
  */
 @SuppressWarnings("AbstractClassNeverImplemented")
 @Mixin(net.minecraft.block.AbstractBlock.AbstractBlockState.class)
 public abstract class AbstractBlockStateMixin
 {
-    protected AbstractBlockStateMixin()
+    AbstractBlockStateMixin()
     {}
 
     @Shadow protected abstract BlockState getSelf();
@@ -64,6 +66,7 @@ public abstract class AbstractBlockStateMixin
     /**
      *  A patch for <tt>net.minecraft.block.AbstractBlock.AbstractBlockState#onEntityCollision</tt>
      *  to redirect collision handing to the FallThru RedirectionHandler.
+     *  SRG name: func_196950_a
      *
      *  @param callback will be set to cancel unless the native collision handling should also execute.
      */
@@ -77,16 +80,30 @@ public abstract class AbstractBlockStateMixin
     }
 
     /**
-     *  A patch for pathfinding to prevent entities from pathfinding through passable blocks.
+     *  A patch for pathfinding to help entities pathfind through passable blocks.
+     *  SRG name: func_196957_g
      *
      *  @param callback will always be set to <tt>true</tt> for configured blocks, preventing native functionality.
      */
-    // TODO: Suggested by Deximus-Maximus. Requires verification that this actually works properly.
     @Inject(at = @At("HEAD"), cancellable = true, method = "allowsMovement(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathType;)Z")
     private void allowsMovement(final IBlockReader world, final BlockPos pos, final PathType type, final CallbackInfoReturnable<Boolean> callback)
     {
-        if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.getSelf().getBlock())) {
+        if (type == PathType.LAND && FallThru.BLOCK_CONFIG_MAP.hasKey(this.getSelf().getBlock())) {
             callback.setReturnValue(true);
+        }
+    }
+
+    /**
+     *  A patch for pathfinding to prevent entities from trying to jump onto passable blocks when moving through them.
+     *  SRG name: func_196952_d
+     *
+     *  @param callback will return <tt>VoxelShapes#empty</tt> for configured blocks, preventing native functionality.
+     */
+    @Inject(at = @At("HEAD"), cancellable = true, method = "getCollisionShapeUncached(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/util/math/shapes/VoxelShape;")
+    private void getCollisionShapeUncached(final IBlockReader world, final BlockPos pos, final CallbackInfoReturnable<VoxelShape> callback)
+    {
+        if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.getSelf().getBlock())) {
+            callback.setReturnValue(VoxelShapes.empty());
         }
     }
 }
