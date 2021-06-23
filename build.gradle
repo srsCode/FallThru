@@ -1,12 +1,11 @@
 buildscript {
     repositories {
-        maven { url = 'https://files.minecraftforge.net/maven' }
+        maven { url = 'https://maven.minecraftforge.net' }
         maven { url = 'https://repo.spongepowered.org/maven/'}
-        jcenter()
         mavenCentral()
     }
     dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.+', changing: true
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '4.1.+', changing: true
         classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
     }
 }
@@ -33,13 +32,14 @@ tasks.withType(Checkstyle) {
     reports.html.enabled true
 }
 
-sourceSets.main.ext.refMap = "fallthru.refmap.json"
+sourceSets.main.ext.refMap = 'fallthru.refmap.json'
 def mixin_file = 'fallthru.mixins.json'
 minecraft {
     mappings channel: project.mapping_channel, version: project.mapping_version
     runs {
         client {
             taskName 'fallthruClient'
+            workingDirectory project.file('run')
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
             property 'mixin.debug.export', 'true'
@@ -49,6 +49,7 @@ minecraft {
         }
         server {
             taskName 'fallthruServer'
+            workingDirectory project.file('run')
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
             property 'mixin.debug.export', 'true'
@@ -57,10 +58,6 @@ minecraft {
             mods {self {source sourceSets.main}}
         }
     }
-}
-
-repositories {
-    maven { url = 'http://repo.spongepowered.org/maven/'}
 }
 
 dependencies {
