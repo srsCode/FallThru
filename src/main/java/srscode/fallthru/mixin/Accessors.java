@@ -1,9 +1,9 @@
 /*
  * Project      : FallThru
  * File         : Accessors.java
- * Last Modified: 20200901-04:27:43-0400
+ * Last Modified: 20201117-03:04:36-0500
  *
- * Copyright (c) 2019-2020 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
