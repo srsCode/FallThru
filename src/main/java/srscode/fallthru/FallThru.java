@@ -33,7 +33,6 @@ import java.util.Arrays;
 
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.MarkerManager;
@@ -43,7 +42,6 @@ import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ForgeI18n;
 import net.minecraftforge.fml.Logging;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -67,10 +65,10 @@ public final class FallThru
     {
         LOGGER.debug(MarkerManager.getMarker("LIFECYCLE").addParents(Logging.LOADING), "Creating an instance of FallThru!");
         instance = this;
-        final Pair<CommonConfig, ForgeConfigSpec> config = new ForgeConfigSpec.Builder().configure(CommonConfig::new);
+        final var config = new ForgeConfigSpec.Builder().configure(CommonConfig::new);
         commonConfig = config.getLeft();
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, config.getRight(), MOD_ID + ".toml");
-        final IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        final var modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(NetworkHandler.INSTANCE::registerPackets);
         modEventBus.addListener(commonConfig::onConfigUpdate);
     }
