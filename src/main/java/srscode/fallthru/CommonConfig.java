@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : CommonConfig.java
- * Last Modified: 20200912-09:40:27-0400
+ * Last Modified: 20210703-18:15:07-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -64,7 +64,7 @@ final class CommonConfig
     private static final String LANGKEY_SETTING_DAMAGETHRESHOLD = "damageThreshold";
     private static final String LANGKEY_SETTING_PASSABLEBLOCKS  = "passableBlocks";
     private static final String LANGKEY_SETTING_BLACKLISTBLOCKS = "blacklistBlocks";
-    private static final Predicate<Object> RESLOC_VALIDATOR     = s -> s instanceof String && ResourceLocation.tryCreate((String) s) != null;
+    private static final Predicate<Object> RESLOC_VALIDATOR     = s -> s instanceof String && ResourceLocation.tryParse((String) s) != null;
 
     final IntValue     damageThreshold;
     final BooleanValue doBlockBreaking;
@@ -147,7 +147,7 @@ final class CommonConfig
                 "  This list is in addition to blocks that are blacklisted by default.",
                 "",
                 "  The default blacklisted Blocks are as fallows:",
-                "    All blocks of the Material types: AIR, BUBBLE_COLUMN, FIRE, PISTON, PORTAL, STRUCTURE_VOID",
+                "    All blocks of the Material types: AIR, BUBBLE_COLUMN, FIRE, PISTON, PORTAL, STRUCTURAL_AIR",
                 "    Other Blocks: minecraft:bedrock, minecraft:end_portal_frame, minecraft:hay_block, minecraft:slime_block, minecraft:honey_block, all beds"
             )
             .translation(getLangKey(LANGKEY_CONFIG, LANGKEY_SETTING_BLACKLISTBLOCKS))
@@ -191,7 +191,7 @@ final class CommonConfig
     void onConfigUpdate(final ModConfig.Reloading event)
     {
         if (event.getConfig().getModId().equals(FallThru.MOD_ID)) {
-            if (FMLEnvironment.dist == Dist.CLIENT && (Minecraft.getInstance().getIntegratedServer() == null || Minecraft.getInstance().getConnection() != null)) {
+            if (FMLEnvironment.dist == Dist.CLIENT && (Minecraft.getInstance().getSingleplayerServer() == null || Minecraft.getInstance().getConnection() != null)) {
                 FallThru.LOGGER.debug(CommonConfig.MARKER_CONFIG, "The config file has changed but the integrated server is not running. Nothing to do.");
             } else {
                 FallThru.LOGGER.debug(CommonConfig.MARKER_CONFIG, "The config file has changed and the server is running. Resyncing config.");

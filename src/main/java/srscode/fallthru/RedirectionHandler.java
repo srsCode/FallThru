@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : RedirectionHandler.java
- * Last Modified: 20200912-09:40:27-0400
+ * Last Modified: 20210704-10:00:10-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -70,30 +70,30 @@ public final class RedirectionHandler
     private static final DamageSource DMGSRC_LEAVES     = new DamageSource(DAMAGETYPE_LEAVES) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_LEAVES;
         @Nonnull
-        @Override public ITextComponent getDeathMessage(@Nonnull final LivingEntity entity)
+        @Override public ITextComponent getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
         {
             return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " fell into leaves and was impaled by branches");
         }
-    }.setDamageBypassesArmor();
+    }.bypassArmor();
     private static final DamageSource DMGSRC_SNOW       = new DamageSource(DAMAGETYPE_SNOW) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_SNOW;
         @Nonnull
-        @Override public ITextComponent getDeathMessage(@Nonnull final LivingEntity entity)
+        @Override public ITextComponent getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
         {
             return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " got packed into a snowball");
         }
-    }.setDamageBypassesArmor();
+    }.bypassArmor();
     private static final Random       RANDOM            = new Random();
     // TODO: Maybe add a config setting for the chance to break blocks
     private static final int          BREAK_CHANCE      = 3;
 
     /**
-     * This method determines if an {@link LivingEntity} is moving based on the Vec3d from {@link Entity#getMotion}, adjusting
+     * This method determines if an {@link LivingEntity} is moving based on the Vec3d from {@link Entity#getDeltaMovement}, adjusting
      * for a y-level drift inherent to players when looking around the mouse axis.
      *
      * This is used to determine whether or not to play a sound when the entity is moving through certain blocks.
      *
-     * @param  motion The motion of the entity from {@link Entity#getMotion}.
+     * @param  motion The motion of the entity from {@link Entity#getDeltaMovement}.
      * @return        <b>true</b> if the entity is moving, <b>false</b> if not.
      */
     private static boolean isMoving(final Vector3d motion)
@@ -139,9 +139,9 @@ public final class RedirectionHandler
     {
         final Block block = blockState.getBlock();
         final Material material = blockState.getMaterial();
-        if (block.isIn(BlockTags.LEAVES)) {
+        if (block.is(BlockTags.LEAVES)) {
             return DMGSRC_LEAVES;
-        } else if (material == Material.SNOW || material == Material.SNOW_BLOCK) {
+        } else if (material == Material.TOP_SNOW || material == Material.SNOW) {
             return DMGSRC_SNOW;
         } else {
             return DamageSource.FALL;
@@ -150,7 +150,7 @@ public final class RedirectionHandler
 
     /**
      * The Collision handler.
-     * This method is called from the mixin injection point in {@link AbstractBlock.AbstractBlockState#onEntityCollision} (func_196950_a).
+     * This method is called from the mixin injection point in {@link AbstractBlock.AbstractBlockState#entityInside} (entityInside).
      *
      * @param  world      The {@link World} of the Block being collided.
      * @param  pos        The {@link Vector3d} coordinates of the BlockState being collided with.
@@ -162,32 +162,32 @@ public final class RedirectionHandler
     {
         final AxisAlignedBB entitybb = entity.getBoundingBox();
         final VoxelShape    blockvs  = blockState.getShape(world, pos);
-        final AxisAlignedBB blockbb  = blockvs.isEmpty() ? VoxelShapes.fullCube().getBoundingBox() : blockvs.getBoundingBox().offset(pos);
+        final AxisAlignedBB blockbb  = blockvs.isEmpty() ? VoxelShapes.block().bounds() : blockvs.bounds().move(pos);
         // shrink the entity bounding box a bit so that it has to be more inside of a block to trigger collisions
-        if (entitybb.grow(-0.1, 0, -0.1).intersects(blockbb)) {
+        if (entitybb.inflate(-0.1, 0, -0.1).intersects(blockbb)) {
             // handle falling into blocks
             final SoundType soundtype = blockState.getSoundType();
             if (entity.fallDistance > 3f) {
                 entity.playSound(soundtype.getBreakSound(), soundtype.getVolume(), soundtype.getPitch() * 0.65f);
                 final int dmgThresh = FallThru.config().damageThreshold.get();
                 if (entity.fallDistance > 3f + dmgThresh) {
-                    final EffectInstance jbeffect = entity.getActivePotionEffect(Effects.JUMP_BOOST);
-                    final double damage = getDamage(entity.fallDistance, dmgThresh, (jbeffect == null ? 0.0 : jbeffect.getAmplifier() + 1), blockConfig.getDamageMult());
+                    final EffectInstance jumpeffect = entity.getEffect(Effects.JUMP);
+                    final double damage = getDamage(entity.fallDistance, dmgThresh, (jumpeffect == null ? 0.0 : jumpeffect.getAmplifier() + 1), blockConfig.getDamageMult());
                     if (damage > 0) {
-                        entity.attackEntityFrom(getDamageSource(blockState), (float) damage);
-                        if (entity.isBeingRidden()) {
+                        entity.hurt(getDamageSource(blockState), (float) damage);
+                        if (entity.isVehicle()) {
                             // recursive call for riders
-                            entity.getRecursivePassengers().forEach(ent -> ent.attackEntityFrom(getDamageSource(blockState), (float) (damage * 0.8)));
+                            entity.getIndirectPassengers().forEach(ent -> ent.hurt(getDamageSource(blockState), (float) (damage * 0.8)));
                         }
                     }
 
                     // handle block breaking
                     final boolean creative = entity instanceof PlayerEntity && ((PlayerEntity) entity).isCreative();
-                    final boolean negationEffect = entity.getActivePotionEffect(Effects.LEVITATION) != null | entity.getActivePotionEffect(Effects.SLOW_FALLING) != null;
-                    if (!world.isRemote && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
+                    final boolean negationEffect = entity.getEffect(Effects.LEVITATION) != null | entity.getEffect(Effects.SLOW_FALLING) != null;
+                    if (!world.isClientSide && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
                         // slightly attenuate the entity bounding box to below the entity for block breaking
-                        final AxisAlignedBB breakbb = entitybb.offset(0, -0.2, 0);
-                        BlockPos.getAllInBox(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
+                        final AxisAlignedBB breakbb = entitybb.move(0, -0.2, 0);
+                        BlockPos.betweenClosedStream(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
                             .filter(filtpos -> {
                                 final BlockState blockstate = world.getBlockState(filtpos);
                                 return blockstate.getMaterial() != Material.AIR
@@ -204,16 +204,17 @@ public final class RedirectionHandler
             entity.fallDistance = entity.fallDistance > 3.0f ? entity.fallDistance * (float) speedMult : 0f;
 
             // handle collision sounds; Only play sounds if the entity is moving; once every 5 ticks.
-            final Vector3d motion = entity.getMotion();
+            final Vector3d motion = entity.getDeltaMovement();
             if (isMoving(motion) && world.getGameTime() % 5 == 0) {
                 entity.playSound(soundtype.getStepSound(), soundtype.getVolume(), soundtype.getPitch() * 0.75f);
             }
 
             // reduce motion based on BlockConfig properties; allow jumping entities to be able to jump 1 block high
-            if (((Accessors.LivingEntityAccessor) entity).getIsJumping()) {
-                entity.setMotion(motion.mul(Math.sqrt(speedMult), 1.0, Math.sqrt(speedMult)));
+            if (((Accessors.LivingEntityAccessor) entity).getJumping()) {
+                final double sqrtmult = Math.sqrt(speedMult);
+                entity.setDeltaMovement(motion.multiply(sqrtmult, 1.0, sqrtmult));
             } else {
-                entity.setMotion(motion.mul(speedMult, speedMult, speedMult));
+                entity.setDeltaMovement(motion.multiply(speedMult, speedMult, speedMult));
             }
         }
 

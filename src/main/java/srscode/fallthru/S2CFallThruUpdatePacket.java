@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : S2CFallThruUpdatePacket.java
- * Last Modified: 20200912-09:40:27-0400
+ * Last Modified: 20210703-08:51:23-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -65,7 +65,7 @@ final class S2CFallThruUpdatePacket
      */
     static S2CFallThruUpdatePacket decode(final PacketBuffer input)
     {
-        return new S2CFallThruUpdatePacket(Objects.requireNonNull(input.readCompoundTag(), "PacketBuffer is null. This should be impossible."));
+        return new S2CFallThruUpdatePacket(Objects.requireNonNull(input.readNbt(), "PacketBuffer is null. This should be impossible."));
     }
 
     /**
@@ -75,7 +75,7 @@ final class S2CFallThruUpdatePacket
      */
     final void encode(final PacketBuffer output)
     {
-        output.writeCompoundTag(configBlocks);
+        output.writeNbt(configBlocks);
     }
 
     /**

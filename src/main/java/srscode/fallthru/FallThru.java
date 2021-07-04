@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : FallThru.java
- * Last Modified: 20200912-09:40:27-0400
+ * Last Modified: 20210703-08:51:23-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -94,7 +94,7 @@ public final class FallThru
     ITextComponent getTranslation(@Nullable final ITextComponent textComponent, final String key, final Object... objs)
     {
         return ForgeI18n.getPattern(key).equals(key)
-            ? textComponent != null ? textComponent.copyRaw().appendString(Arrays.toString(objs)) : new StringTextComponent(Arrays.toString(objs))
+            ? textComponent != null ? textComponent.plainCopy().append(Arrays.toString(objs)) : new StringTextComponent(Arrays.toString(objs))
             : textComponent != null ? new TranslationTextComponent(key, textComponent) : new TranslationTextComponent(key, objs);
     }
 }

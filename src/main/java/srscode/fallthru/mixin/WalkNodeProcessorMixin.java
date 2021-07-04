@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : WalkNodeProcessorMixin.java
- * Last Modified: 20210326-07:19:46-0400
+ * Last Modified: 20210704-09:25:05-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -56,14 +56,14 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
 
     /**
      *  A patch for pathfinding to allow entities to pathfind through passable blocks.
-     *  SRG name: func_215744_a
+     *  SRG name: func_215744_a, Official name: evaluateBlockPathType
      *
      *  @param callback Returns the penalized PathPoint.
      */
     @Inject(at = @At("HEAD"), cancellable = true,
-        method = "refineNodeType(Lnet/minecraft/world/IBlockReader;ZZLnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathNodeType;)Lnet/minecraft/pathfinding/PathNodeType;")
-    private void refineNodeType(final IBlockReader world, final boolean closed, final boolean door, final BlockPos pos,
-                                final PathNodeType pathNodeType, final CallbackInfoReturnable<PathNodeType> callback)
+        method = "evaluateBlockPathType(Lnet/minecraft/world/IBlockReader;ZZLnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathNodeType;)Lnet/minecraft/pathfinding/PathNodeType;")
+    private void evaluateBlockPathType(final IBlockReader world, final boolean closed, final boolean door, final BlockPos pos,
+                                       final PathNodeType pathNodeType, final CallbackInfoReturnable<PathNodeType> callback)
     {
         if (FallThru.BLOCK_CONFIG_MAP.hasKey(world.getBlockState(pos).getBlock())) {
             callback.setReturnValue(PathNodeType.WALKABLE);
@@ -72,12 +72,13 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
 
     /**
      *  A patch for pathfinding to allow entities to pathfind through passable blocks.
-     *  SRG name: func_186330_a
+     *  SRG name: func_186330_a, Official name: getBlockPathType
      *
      *  @param callback Returns <tt>PathNodeType.WALKABLE</tt> if this is a passable block.
      */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "getFloorNodeType(Lnet/minecraft/world/IBlockReader;III)Lnet/minecraft/pathfinding/PathNodeType;")
-    private void getFloorNodeType(final IBlockReader world, final int x, final int y, final int z, final CallbackInfoReturnable<PathNodeType> callback)
+    @Inject(at = @At("HEAD"), cancellable = true,
+        method = "getBlockPathType(Lnet/minecraft/world/IBlockReader;III)Lnet/minecraft/pathfinding/PathNodeType;")
+    private void getBlockPathType(final IBlockReader world, final int x, final int y, final int z, final CallbackInfoReturnable<PathNodeType> callback)
     {
         if (FallThru.BLOCK_CONFIG_MAP.hasKey(world.getBlockState(new BlockPos(x, y, z)).getBlock())) {
             callback.setReturnValue(PathNodeType.WALKABLE);
@@ -88,19 +89,20 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
      *  A patch for pathfinding to add a penalty for entities pathfinding through passable blocks.
      *  The penalty is 2x the inverse of the configured speed multiplier, which shouldn't be overly disruptive
      *  of the natural path, but enough for entities to avoid passable blocks in most cases.
-     *  SRG name: func_186332_a
+     *  SRG name: func_186332_a, Official name: getLandNode
      *
      *  @param callback Returns the penalized PathPoint.
      */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "getSafePoint(IIIIDLnet/minecraft/util/Direction;Lnet/minecraft/pathfinding/PathNodeType;)Lnet/minecraft/pathfinding/PathPoint;")
-    private void getSafePoint(final int x, final int y, final int z, final int stepHeight, final double groundYIn,
-                              final Direction facing, final PathNodeType nodeType, final CallbackInfoReturnable<PathPoint> callback)
+    @Inject(at = @At("HEAD"), cancellable = true,
+        method = "getLandNode(IIIIDLnet/minecraft/util/Direction;Lnet/minecraft/pathfinding/PathNodeType;)Lnet/minecraft/pathfinding/PathPoint;")
+    private void getLandNode(final int x, final int y, final int z, final int stepHeight, final double groundYIn,
+                             final Direction facing, final PathNodeType nodeType, final CallbackInfoReturnable<PathPoint> callback)
     {
         FallThru.BLOCK_CONFIG_MAP
-            .getConfig(this.blockaccess.getBlockState(new BlockPos(x, y, z)).getBlock())
+            .getConfig(this.level.getBlockState(new BlockPos(x, y, z)).getBlock())
             .ifPresent(blockConfig -> {
-                final PathPoint pp = this.openPoint(x, y, z);
-                pp.nodeType = PathNodeType.WALKABLE;
+                final PathPoint pp = this.getNode(x, y, z);
+                pp.type = PathNodeType.WALKABLE;
                 pp.costMalus = (float)Math.max(0.0, (1.0 / blockConfig.getSpeedMult()) * 2.0);
                 callback.setReturnValue(pp);
             });

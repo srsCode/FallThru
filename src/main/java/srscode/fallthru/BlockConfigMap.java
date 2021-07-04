@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20210325-03:02:57-0400
+ * Last Modified: 20210703-10:12:49-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -83,7 +83,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
     private static final Function<String, Block> BLOCK_RESOLVER = cfgblock -> {
         final ResourceLocation resloc;
-        if ((resloc = ResourceLocation.tryCreate(cfgblock)) != null && ForgeRegistries.BLOCKS.containsKey(resloc)) {
+        if ((resloc = ResourceLocation.tryParse(cfgblock)) != null && ForgeRegistries.BLOCKS.containsKey(resloc)) {
             return ForgeRegistries.BLOCKS.getValue(resloc);
         } else {
             FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block in blacklist does not exist: {}", resloc);
@@ -94,10 +94,10 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     private static final transient Collection<Block> BLACKLIST_BLOCKS = new HashSet<>();
 
     private static final Predicate<Block> BLACKLISTED_MATERIALS = block -> {
-        final Material material = block.getDefaultState().getMaterial();
+        final Material material = block.defaultBlockState().getMaterial();
         return material == Material.AIR    || material == Material.BUBBLE_COLUMN
             || material == Material.FIRE   || material == Material.PISTON
-            || material == Material.PORTAL || material == Material.STRUCTURE_VOID;
+            || material == Material.PORTAL || material == Material.STRUCTURAL_AIR;
     };
 
     BlockConfigMap() {}
@@ -266,8 +266,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     private void updateBlock(final BlockConfig blockConfig, final boolean adding)
     {
         final Block block = blockConfig.getBlock();
-        ((Accessors.AbstractBlockAccessor)block).setCanCollide(!adding && blockConfig.canCollide());
-        ((Accessors.AbstractBlockStateAccessor)block.getDefaultState()).setIsSolid(!adding && blockConfig.isSolid());
+        ((Accessors.AbstractBlockAccessor)block).setHasCollision(!adding && blockConfig.hasCollision());
+        ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).setCanOcclude(!adding && blockConfig.canOcclude());
     }
 
     /**
@@ -330,8 +330,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         }
 
         // NBT name constants
-        static final String ORIG_CAN_COLLIDE = "canCollide";
-        static final String ORIG_IS_SOLID    = "isSolid";
+        static final String ORIG_HAS_COLLISION = "hasCollision";
+        static final String ORIG_CAN_OCCLUDE   = "canOcclude";
 
         // named group constants
         static final String GROUP_ITEMTYPE    = "itemtype";
@@ -395,7 +395,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                 FallThru.LOGGER.error(MARKER_BLOCKCFG, "Illegal entry type. Entry must begin with 'block/' or 'tag/'; Skipping: {}", matcher.group(BlockConfig.GROUP_ITEMTYPE));
                 return Collections.emptySet();
             }
-            final ResourceLocation resloc = ResourceLocation.tryCreate(matcher.group(BlockConfig.GROUP_RESLOC));
+            final ResourceLocation resloc = ResourceLocation.tryParse(matcher.group(BlockConfig.GROUP_RESLOC));
             if (resloc == null) {
                 FallThru.LOGGER.error(MARKER_BLOCKCFG, "Illegal ResourceLocation for config entry; Skipping: {}", matcher.group(BlockConfig.GROUP_RESLOC));
                 return Collections.emptySet();
@@ -447,17 +447,17 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         private final double  speedMult;
         private final double  damageMult;
         private final boolean allowNative;
-        private final boolean canCollide;
-        private final boolean isSolid;
+        private final boolean hasCollision;
+        private final boolean canOcclude;
 
-        private BlockConfig(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean canCollide, final boolean isSolid)
+        private BlockConfig(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean hasCollision, final boolean canOcclude)
         {
-            this.block       = Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
-            this.speedMult   = speedMult;
-            this.damageMult  = damageMult;
-            this.allowNative = allowNative;
-            this.canCollide  = canCollide;
-            this.isSolid     = isSolid;
+            this.block        = Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
+            this.speedMult    = speedMult;
+            this.damageMult   = damageMult;
+            this.allowNative  = allowNative;
+            this.hasCollision = hasCollision;
+            this.canOcclude   = canOcclude;
         }
 
         /**
@@ -499,19 +499,19 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         }
 
         /**
-         *  The original value of <tt>AbstractBlock#canCollide</tt> for this block.
+         *  The original value of <tt>AbstractBlock#hasCollision</tt> for this block.
          */
-        boolean canCollide()
+        boolean hasCollision()
         {
-            return canCollide;
+            return hasCollision;
         }
 
         /**
-         *  The original value of <tt>AbstractBlockState#isSolid</tt> for the default state of this block.
+         *  The original value of <tt>AbstractBlockState#canOcclude</tt> for the default state of this block.
          */
-        boolean isSolid()
+        boolean canOcclude()
         {
-            return isSolid;
+            return canOcclude;
         }
 
         /**
@@ -526,24 +526,24 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative)
         {
             return new BlockConfig(block, speedMult, damageMult, allowNative,
-                ((Accessors.AbstractBlockAccessor)block).getCanCollide(),
-                ((Accessors.AbstractBlockStateAccessor)block.getDefaultState()).getIsSolid());
+                ((Accessors.AbstractBlockAccessor)block).getHasCollision(),
+                ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).getCanOcclude());
         }
 
         /**
          * A factory method for creating BlockConfigs.
          *
-         * @param  block       The Block.
-         * @param  speedMult   The speed multiplier.
-         * @param  damageMult  The damage multiplier.
-         * @param  allowNative Allow default collision handling.
-         * @param  canCollide  The original block value of canCollide.
-         * @param  isSolid     The original blockstate value of isSolid.
-         * @return             A new BlockConfig.
+         * @param  block        The Block.
+         * @param  speedMult    The speed multiplier.
+         * @param  damageMult   The damage multiplier.
+         * @param  allowNative  Allow default collision handling.
+         * @param  hasCollision The original block value of hasCollision.
+         * @param  canCollude   The original blockstate value of canCollude.
+         * @return              A new BlockConfig.
          */
-        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean canCollide, final boolean isSolid)
+        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean hasCollision, final boolean canCollude)
         {
-            return new BlockConfig(block, speedMult, damageMult, allowNative, canCollide, isSolid);
+            return new BlockConfig(block, speedMult, damageMult, allowNative, hasCollision, canCollude);
         }
 
         /**
@@ -558,8 +558,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             ret.putDouble(GROUP_SPMULT, getSpeedMult());
             ret.putDouble(GROUP_DMGMULT, getDamageMult());
             ret.putBoolean(GROUP_ALLOWNATIVE, allowNative());
-            ret.putBoolean(ORIG_CAN_COLLIDE, canCollide());
-            ret.putBoolean(ORIG_IS_SOLID, isSolid());
+            ret.putBoolean(ORIG_HAS_COLLISION, hasCollision());
+            ret.putBoolean(ORIG_CAN_OCCLUDE, canOcclude());
             return ret;
         }
 
@@ -577,8 +577,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                 nbt.getDouble(GROUP_SPMULT),
                 nbt.getDouble(GROUP_DMGMULT),
                 nbt.getBoolean(GROUP_ALLOWNATIVE),
-                nbt.getBoolean(ORIG_CAN_COLLIDE),
-                nbt.getBoolean(ORIG_IS_SOLID)
+                nbt.getBoolean(ORIG_HAS_COLLISION),
+                nbt.getBoolean(ORIG_CAN_OCCLUDE)
             );
         }
 

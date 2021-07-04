@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : AbstractBlockPropertiesMixin.java
- * Last Modified: 20200912-09:40:27-0400
+ * Last Modified: 20210703-09:37:37-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -47,18 +47,20 @@ public class AbstractBlockPropertiesMixin
      *  Keep the native IPositionPredicates in order to wrap them.
      *  These will be set in clinit prior to the original fields being rewritten by the wrappers below.
      */
-    private AbstractBlock.IPositionPredicate nativeSuffocates   = this.suffocates;
-    private AbstractBlock.IPositionPredicate nativeBlocksVision = this.blocksVision;
+    private AbstractBlock.IPositionPredicate nativeIsSuffocating = this.isSuffocating;
+    private AbstractBlock.IPositionPredicate nativeIsViewBlocking = this.isViewBlocking;
 
     /**
      *  This IPositionPredicate prevents entities from being pushed out of blocks (required for 1.16.1).
+     *  SRG name: field_235816_r_, Official name: isSuffocating
      */
-    @Shadow private AbstractBlock.IPositionPredicate suffocates = (blockState, world, pos) ->
-        !FallThru.BLOCK_CONFIG_MAP.hasKey(blockState.getBlock()) && this.nativeSuffocates.test(blockState, world, pos);
+    @Shadow private AbstractBlock.IPositionPredicate isSuffocating = (blockState, world, pos) ->
+        !FallThru.BLOCK_CONFIG_MAP.hasKey(blockState.getBlock()) && this.nativeIsSuffocating.test(blockState, world, pos);
 
     /**
      *  This IPositionPredicate changes the rendering test so that players will be able to see through the block their head is in.
+     *  SRG name: field_235817_s_, Official name: isViewBlocking
      */
-    @Shadow private AbstractBlock.IPositionPredicate blocksVision = (blockState, world, pos) ->
-        !FallThru.BLOCK_CONFIG_MAP.hasKey(blockState.getBlock()) && this.nativeBlocksVision.test(blockState, world, pos);
+    @Shadow private AbstractBlock.IPositionPredicate isViewBlocking = (blockState, world, pos) ->
+        !FallThru.BLOCK_CONFIG_MAP.hasKey(blockState.getBlock()) && this.nativeIsViewBlocking.test(blockState, world, pos);
 }

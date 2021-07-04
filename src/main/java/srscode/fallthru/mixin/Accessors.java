@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : Accessors.java
- * Last Modified: 20201117-03:04:36-0500
+ * Last Modified: 20210704-09:46:12-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -43,41 +43,44 @@ public final class Accessors
     {}
 
     /**
-     *  An accessor for the protected field <tt>net.minecraft.block.AbstractBlock#canCollide</tt> which allows
+     *  An accessor for the protected field <tt>net.minecraft.block.AbstractBlock#hasCollision</tt> which allows
      *  setting it so that entities can pass through the block.
+     *  SRG name: field_235688_at_, Official name: hasCollision
      */
     @Mixin(net.minecraft.block.AbstractBlock.class)
     public interface AbstractBlockAccessor
     {
-        @Accessor boolean getCanCollide();
+        @Accessor boolean getHasCollision();
 
-        @Accessor void setCanCollide(final boolean val);
+        @Accessor void setHasCollision(final boolean val);
     }
 
     /**
-     *  An accessor for the private field <tt>net.minecraft.block.AbstractBlock.AbstractBlockState#isSolid</tt>.
+     *  An accessor for the private field <tt>net.minecraft.block.AbstractBlock.AbstractBlockState#canOcclude</tt>.
      *  This fixes the rendering issue where players passing through 'solid' blocks would have an x-ray
      *  effect with other connected solid blocks.
-     *  Note: This mixin is prefered over an injection into <tt>Block#shouldSideBeRendered</tt> as that would
+     *  Note: This mixin is prefered over an injection into <tt>Block#shouldRenderFace</tt> as that would
      *  have undesirable rendering effects with some blocks, such as glass/stained glass blocks, which users
      *  are highly unlikely to make passable.
+     *  SRG name: field_235707_k_, Official name:canOcclude
      */
     @Mixin(net.minecraft.block.AbstractBlock.AbstractBlockState.class)
     public interface AbstractBlockStateAccessor
     {
-        @Accessor boolean getIsSolid();
+        @Accessor boolean getCanOcclude();
 
-        @Accessor void setIsSolid(final boolean solid);
+        @Accessor void setCanOcclude(final boolean solid);
     }
 
     /**
-     *  An accessor for the protected field <tt>net.minecraft.entity.LivingEntity#isJumping</tt>.
+     *  An accessor for the protected field <tt>net.minecraft.entity.LivingEntity#jumping</tt>.
      *  This gives the FallThru RedirectionHandler access to be able to modify an entity's vertical speed
      *  reduction differently while jumping so that the entity is able to jump atleast a full block height.
+     *  SRG name: field_70703_bu, Official name: jumping
      */
     @Mixin(net.minecraft.entity.LivingEntity.class)
     public interface LivingEntityAccessor
     {
-        @Accessor boolean getIsJumping();
+        @Accessor boolean getJumping();
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : AbstractBlockStateMixin.java
- * Last Modified: 20210326-07:18:21-0400
+ * Last Modified: 20210704-09:26:01-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -61,48 +61,51 @@ public abstract class AbstractBlockStateMixin
     AbstractBlockStateMixin()
     {}
 
-    @Shadow protected abstract BlockState getSelf();
+    @Shadow protected abstract BlockState asState();
 
     /**
      *  A patch for <tt>net.minecraft.block.AbstractBlock.AbstractBlockState#onEntityCollision</tt>
      *  to redirect collision handing to the FallThru RedirectionHandler.
-     *  SRG name: func_196950_a
+     *  SRG name: func_196950_a, Official name: entityInside
      *
      *  @param callback will be set to cancel unless the native collision handling should also execute.
      */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "onEntityCollision(Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/entity/Entity;)V")
-    private void onEntityCollision(final World world, final BlockPos pos, final Entity entity, final CallbackInfo callback)
+    @Inject(at = @At("HEAD"), cancellable = true,
+        method = "entityInside(Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/entity/Entity;)V")
+    private void entityInside(final World world, final BlockPos pos, final Entity entity, final CallbackInfo callback)
     {
         if (entity instanceof LivingEntity) {
-            FallThru.BLOCK_CONFIG_MAP.getConfig(this.getSelf().getBlock())
-                .ifPresent(blockConfig -> RedirectionHandler.handleCollision(world, pos, (LivingEntity)entity, this.getSelf(), blockConfig, callback));
+            FallThru.BLOCK_CONFIG_MAP.getConfig(this.asState().getBlock())
+                .ifPresent(blockConfig -> RedirectionHandler.handleCollision(world, pos, (LivingEntity)entity, this.asState(), blockConfig, callback));
         }
     }
 
     /**
      *  A patch for pathfinding to help entities pathfind through passable blocks.
-     *  SRG name: func_196957_g
+     *  SRG name: func_196957_g, Official name: isPathfindable
      *
      *  @param callback will always be set to <tt>true</tt> for configured blocks, preventing native functionality.
      */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "allowsMovement(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathType;)Z")
-    private void allowsMovement(final IBlockReader world, final BlockPos pos, final PathType type, final CallbackInfoReturnable<Boolean> callback)
+    @Inject(at = @At("HEAD"), cancellable = true,
+        method = "isPathfindable(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathType;)Z")
+    private void isPathfindable(final IBlockReader world, final BlockPos pos, final PathType type, final CallbackInfoReturnable<Boolean> callback)
     {
-        if (type == PathType.LAND && FallThru.BLOCK_CONFIG_MAP.hasKey(this.getSelf().getBlock())) {
+        if (type == PathType.LAND && FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
             callback.setReturnValue(true);
         }
     }
 
     /**
      *  A patch for pathfinding to prevent entities from trying to jump onto passable blocks when moving through them.
-     *  SRG name: func_196952_d
+     *  SRG name: func_196952_d, Official name: getCollisionShape
      *
      *  @param callback will return <tt>VoxelShapes#empty</tt> for configured blocks, preventing native functionality.
      */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "getCollisionShapeUncached(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/util/math/shapes/VoxelShape;")
-    private void getCollisionShapeUncached(final IBlockReader world, final BlockPos pos, final CallbackInfoReturnable<VoxelShape> callback)
+    @Inject(at = @At("HEAD"), cancellable = true,
+        method = "getCollisionShape(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/util/math/shapes/VoxelShape;")
+    private void getCollisionShape(final IBlockReader world, final BlockPos pos, final CallbackInfoReturnable<VoxelShape> callback)
     {
-        if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.getSelf().getBlock())) {
+        if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
             callback.setReturnValue(VoxelShapes.empty());
         }
     }
