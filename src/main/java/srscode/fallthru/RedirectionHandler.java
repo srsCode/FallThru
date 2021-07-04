@@ -36,20 +36,15 @@ import javax.annotation.Nonnull;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.potion.EffectInstance;
 import net.minecraft.potion.Effects;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.DamageSource;
-import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.ITextComponent;
@@ -137,8 +132,8 @@ public final class RedirectionHandler
      */
     private static DamageSource getDamageSource(final AbstractBlock.AbstractBlockState blockState)
     {
-        final Block block = blockState.getBlock();
-        final Material material = blockState.getMaterial();
+        final var block = blockState.getBlock();
+        final var material = blockState.getMaterial();
         if (block.is(BlockTags.LEAVES)) {
             return DMGSRC_LEAVES;
         } else if (material == Material.TOP_SNOW || material == Material.SNOW) {
@@ -160,19 +155,19 @@ public final class RedirectionHandler
      */
     public static void handleCollision(final World world, final BlockPos pos, final LivingEntity entity, final BlockState blockState, final BlockConfig blockConfig, final CallbackInfo callback)
     {
-        final AxisAlignedBB entitybb = entity.getBoundingBox();
-        final VoxelShape    blockvs  = blockState.getShape(world, pos);
-        final AxisAlignedBB blockbb  = blockvs.isEmpty() ? VoxelShapes.block().bounds() : blockvs.bounds().move(pos);
+        final var entitybb = entity.getBoundingBox();
+        final var blockvs  = blockState.getShape(world, pos);
+        final var blockbb  = blockvs.isEmpty() ? VoxelShapes.block().bounds() : blockvs.bounds().move(pos);
         // shrink the entity bounding box a bit so that it has to be more inside of a block to trigger collisions
         if (entitybb.inflate(-0.1, 0, -0.1).intersects(blockbb)) {
             // handle falling into blocks
-            final SoundType soundtype = blockState.getSoundType();
+            final var soundtype = blockState.getSoundType();
             if (entity.fallDistance > 3f) {
                 entity.playSound(soundtype.getBreakSound(), soundtype.getVolume(), soundtype.getPitch() * 0.65f);
                 final int dmgThresh = FallThru.config().damageThreshold.get();
                 if (entity.fallDistance > 3f + dmgThresh) {
-                    final EffectInstance jumpeffect = entity.getEffect(Effects.JUMP);
-                    final double damage = getDamage(entity.fallDistance, dmgThresh, (jumpeffect == null ? 0.0 : jumpeffect.getAmplifier() + 1), blockConfig.getDamageMult());
+                    final var jumpeffect = entity.getEffect(Effects.JUMP);
+                    final var damage = getDamage(entity.fallDistance, dmgThresh, (jumpeffect == null ? 0.0 : jumpeffect.getAmplifier() + 1), blockConfig.damageMult());
                     if (damage > 0) {
                         entity.hurt(getDamageSource(blockState), (float) damage);
                         if (entity.isVehicle()) {
@@ -182,14 +177,14 @@ public final class RedirectionHandler
                     }
 
                     // handle block breaking
-                    final boolean creative = entity instanceof PlayerEntity && ((PlayerEntity) entity).isCreative();
-                    final boolean negationEffect = entity.getEffect(Effects.LEVITATION) != null | entity.getEffect(Effects.SLOW_FALLING) != null;
+                    final var creative = entity instanceof PlayerEntity && ((PlayerEntity) entity).isCreative();
+                    final var negationEffect = entity.getEffect(Effects.LEVITATION) != null | entity.getEffect(Effects.SLOW_FALLING) != null;
                     if (!world.isClientSide && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
                         // slightly attenuate the entity bounding box to below the entity for block breaking
-                        final AxisAlignedBB breakbb = entitybb.move(0, -0.2, 0);
+                        final var breakbb = entitybb.move(0, -0.2, 0);
                         BlockPos.betweenClosedStream(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
                             .filter(filtpos -> {
-                                final BlockState blockstate = world.getBlockState(filtpos);
+                                final var blockstate = world.getBlockState(filtpos);
                                 return blockstate.getMaterial() != Material.AIR
                                     && FallThru.BLOCK_CONFIG_MAP.hasKey(blockstate.getBlock())
                                     && RANDOM.nextInt(BREAK_CHANCE) == 0;
@@ -200,18 +195,18 @@ public final class RedirectionHandler
             }
 
             // decay fall distance
-            final double speedMult = blockConfig.getSpeedMult();
+            final var speedMult = blockConfig.speedMult();
             entity.fallDistance = entity.fallDistance > 3.0f ? entity.fallDistance * (float) speedMult : 0f;
 
             // handle collision sounds; Only play sounds if the entity is moving; once every 5 ticks.
-            final Vector3d motion = entity.getDeltaMovement();
+            final var motion = entity.getDeltaMovement();
             if (isMoving(motion) && world.getGameTime() % 5 == 0) {
                 entity.playSound(soundtype.getStepSound(), soundtype.getVolume(), soundtype.getPitch() * 0.75f);
             }
 
             // reduce motion based on BlockConfig properties; allow jumping entities to be able to jump 1 block high
             if (((Accessors.LivingEntityAccessor) entity).getJumping()) {
-                final double sqrtmult = Math.sqrt(speedMult);
+                final var sqrtmult = Math.sqrt(speedMult);
                 entity.setDeltaMovement(motion.multiply(sqrtmult, 1.0, sqrtmult));
             } else {
                 entity.setDeltaMovement(motion.multiply(speedMult, speedMult, speedMult));

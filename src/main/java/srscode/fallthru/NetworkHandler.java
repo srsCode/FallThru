@@ -32,9 +32,7 @@ package srscode.fallthru;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
 
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -115,8 +113,8 @@ public enum NetworkHandler
     @SubscribeEvent
     public static void onPlayerLogin(final PlayerEvent.PlayerLoggedInEvent event)
     {
-        final PlayerEntity player = event.getPlayer();
-        final MinecraftServer server = player.getServer();
+        final var player = event.getPlayer();
+        final var server = player.getServer();
         if (server != null && server.isDedicatedServer()) {
             server.execute(() -> INSTANCE.updatePlayer((ServerPlayerEntity) player));
         }

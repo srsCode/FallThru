@@ -29,6 +29,7 @@
 
 package srscode.fallthru;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,7 +41,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -76,6 +76,7 @@ import srscode.fallthru.mixin.Accessors;
 @SuppressWarnings("WeakerAccess")
 public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 {
+    @Serial
     private static final long serialVersionUID = 4723499327562438886L;
 
     private static final Marker MARKER_BLOCKCFG = MarkerManager.getMarker("BLOCK CONFIG");
@@ -94,7 +95,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     private static final transient Collection<Block> BLACKLIST_BLOCKS = new HashSet<>();
 
     private static final Predicate<Block> BLACKLISTED_MATERIALS = block -> {
-        final Material material = block.defaultBlockState().getMaterial();
+        final var material = block.defaultBlockState().getMaterial();
         return material == Material.AIR    || material == Material.BUBBLE_COLUMN
             || material == Material.FIRE   || material == Material.PISTON
             || material == Material.PORTAL || material == Material.STRUCTURAL_AIR;
@@ -187,7 +188,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      */
     CompoundNBT toNBT()
     {
-        final CompoundNBT ret = new CompoundNBT();
+        final var ret = new CompoundNBT();
         ret.put(NBT_CONFIG_TAG, values().stream().map(BlockConfig::toNBT).collect(Collectors.toCollection(ListNBT::new)));
         return ret;
     }
@@ -216,7 +217,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      */
     void add(@Nonnull final BlockConfig blockConfig)
     {
-        put(getHash(blockConfig.getBlock()), blockConfig);
+        put(getHash(blockConfig.block()), blockConfig);
         updateBlock(blockConfig, true);
     }
 
@@ -238,7 +239,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      */
     Optional<BlockConfig> remove(@Nonnull final Block block)
     {
-        final BlockConfig removed = super.remove(getHash(block));
+        final var removed = super.remove(getHash(block));
         if (removed != null) {
             updateBlock(removed, false);
             return Optional.of(removed);
@@ -254,7 +255,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     @SuppressWarnings("unused")
     void remove(final BlockConfig blockConfig)
     {
-        remove(blockConfig.getBlock());
+        remove(blockConfig.block());
     }
 
     /**
@@ -265,7 +266,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      */
     private void updateBlock(final BlockConfig blockConfig, final boolean adding)
     {
-        final Block block = blockConfig.getBlock();
+        final var block = blockConfig.block();
         ((Accessors.AbstractBlockAccessor)block).setHasCollision(!adding && blockConfig.hasCollision());
         ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).setCanOcclude(!adding && blockConfig.canOcclude());
     }
@@ -307,7 +308,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      * A class to store the configuration of passable blocks.
      * With the exception of the {@link Block} referenced, all of the class members are immutable.
      */
-    public static final class BlockConfig
+    public final record BlockConfig(@Nonnull Block block, double speedMult, double damageMult, boolean allowNative, boolean hasCollision, boolean canOcclude)
     {
         /**
          * An enum for discerning if a configuration string from {@link CommonConfig#passableBlocks}
@@ -321,11 +322,11 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             static BlockConfig.ItemType get(final String type)
             {
                 // LOOKUPSWITCH.. sheesh.
-                switch (type.toLowerCase(Locale.ROOT)) {
-                    case "block": return BLOCK;
-                    case "tag"  : return TAG;
-                    default     : return null;
-                }
+                return switch (type.toLowerCase(Locale.ROOT)) {
+                    case "block" -> BLOCK;
+                    case "tag" -> TAG;
+                    default -> null;
+                };
             }
         }
 
@@ -370,14 +371,14 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          * and override the Tag entry. This is so that users can special-case some blocks if they want to.
          */
         static final Comparator<String> CFGSTR_SORTER = (cfgstr1, cfgstr2) -> {
-            final Pattern pattern = Pattern.compile("^\\s*" + BlockConfig.PATTERN_ITEMTYPE + "\\/\\w.*$", Pattern.CASE_INSENSITIVE);
-            final Matcher matcher1 = pattern.matcher(cfgstr1);
-            final Matcher matcher2 = pattern.matcher(cfgstr2);
+            final var pattern = Pattern.compile("^\\s*" + BlockConfig.PATTERN_ITEMTYPE + "\\/\\w.*$", Pattern.CASE_INSENSITIVE);
+            final var matcher1 = pattern.matcher(cfgstr1);
+            final var matcher2 = pattern.matcher(cfgstr2);
             // No sense in verifying as the strings have already gone through the validator.
             matcher1.matches();
             matcher2.matches();
-            final ItemType type1 = Objects.requireNonNull(ItemType.get(matcher1.group(BlockConfig.GROUP_ITEMTYPE)));
-            final ItemType type2 = Objects.requireNonNull(ItemType.get(matcher2.group(BlockConfig.GROUP_ITEMTYPE)));
+            final var type1 = Objects.requireNonNull(ItemType.get(matcher1.group(BlockConfig.GROUP_ITEMTYPE)));
+            final var type2 = Objects.requireNonNull(ItemType.get(matcher2.group(BlockConfig.GROUP_ITEMTYPE)));
             return Integer.compare(type2.ordinal(), type1.ordinal());
         };
 
@@ -387,27 +388,27 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          */
         static final Function<String, Collection<BlockConfig>> BLOCKCONFIG_BUILDER = cfgstr -> {
 
-            final Matcher matcher = Pattern.compile(BlockConfig.PATTERN_CFGSTR, Pattern.CASE_INSENSITIVE).matcher(cfgstr);
+            final var matcher = Pattern.compile(BlockConfig.PATTERN_CFGSTR, Pattern.CASE_INSENSITIVE).matcher(cfgstr);
             matcher.matches();
 
-            final BlockConfig.ItemType type = BlockConfig.ItemType.get(matcher.group(BlockConfig.GROUP_ITEMTYPE));
+            final var type = BlockConfig.ItemType.get(matcher.group(BlockConfig.GROUP_ITEMTYPE));
             if (type == null) {
                 FallThru.LOGGER.error(MARKER_BLOCKCFG, "Illegal entry type. Entry must begin with 'block/' or 'tag/'; Skipping: {}", matcher.group(BlockConfig.GROUP_ITEMTYPE));
                 return Collections.emptySet();
             }
-            final ResourceLocation resloc = ResourceLocation.tryParse(matcher.group(BlockConfig.GROUP_RESLOC));
+            final var resloc = ResourceLocation.tryParse(matcher.group(BlockConfig.GROUP_RESLOC));
             if (resloc == null) {
                 FallThru.LOGGER.error(MARKER_BLOCKCFG, "Illegal ResourceLocation for config entry; Skipping: {}", matcher.group(BlockConfig.GROUP_RESLOC));
                 return Collections.emptySet();
             }
-            final double  spmult   = Double.parseDouble(matcher.group(BlockConfig.GROUP_SPMULT));
-            final double  dmgmult  = Double.parseDouble(matcher.group(BlockConfig.GROUP_DMGMULT));
+            final var spmult   = Double.parseDouble(matcher.group(BlockConfig.GROUP_SPMULT));
+            final var dmgmult  = Double.parseDouble(matcher.group(BlockConfig.GROUP_DMGMULT));
             // If a boolean value wasn't provided for native handling, default to 'false' (prevent native handling).
-            final boolean allowdef = matcher.group(BlockConfig.GROUP_ALLOWNATIVE) != null && Boolean.parseBoolean(matcher.group(BlockConfig.GROUP_ALLOWNATIVE));
+            final var allowdef = matcher.group(BlockConfig.GROUP_ALLOWNATIVE) != null && Boolean.parseBoolean(matcher.group(BlockConfig.GROUP_ALLOWNATIVE));
 
             final Collection<Block> blocks = Sets.newHashSet();
             switch (type) {
-                case BLOCK:
+                case BLOCK -> {
                     final Block cfgblock;
                     if (!ForgeRegistries.BLOCKS.containsKey(resloc)) {
                         FallThru.LOGGER.error(MARKER_BLOCKCFG, "Block not found in the Block registry; Skipping: {}", resloc);
@@ -416,9 +417,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                     } else {
                         blocks.add(cfgblock);
                     }
-                    break;
-
-                case TAG:
+                }
+                case TAG -> {
                     final Collection<Block> tagBlocks = ForgeRegistries.BLOCKS.getValues().stream()
                         .filter(tagBlock -> tagBlock.getTags().contains(resloc))
                         .filter(tagBlock -> {
@@ -434,117 +434,16 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                         FallThru.LOGGER.error(MARKER_BLOCKCFG, "Could not find any blocks for Tag, or Tag does not exist: {}", resloc);
                     }
                     blocks.addAll(tagBlocks);
-                    break;
+                }
             }
 
             return blocks
                 .stream()
-                .map(block -> BlockConfig.create(block, spmult, dmgmult, allowdef))
+                .map(block -> new BlockConfig(block, spmult, dmgmult, allowdef,
+                    ((Accessors.AbstractBlockAccessor)block).getHasCollision(),
+                    ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).getCanOcclude()))
                 .collect(Collectors.toSet());
         };
-
-        private final Block   block;
-        private final double  speedMult;
-        private final double  damageMult;
-        private final boolean allowNative;
-        private final boolean hasCollision;
-        private final boolean canOcclude;
-
-        private BlockConfig(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean hasCollision, final boolean canOcclude)
-        {
-            this.block        = Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
-            this.speedMult    = speedMult;
-            this.damageMult   = damageMult;
-            this.allowNative  = allowNative;
-            this.hasCollision = hasCollision;
-            this.canOcclude   = canOcclude;
-        }
-
-        /**
-         * A getter for the {@link Block} of this BlockConfig.
-         *
-         * @return The Block
-         */
-        public Block getBlock()
-        {
-            return block;
-        }
-
-        /**
-         * A getter for the speed multiplier setting for the {@link Block} of this BlockConfig.
-         *
-         * @return the speed multiplier
-         */
-        public double getSpeedMult()
-        {
-            return speedMult;
-        }
-
-        /**
-         * A getter for the damage multiplier setting for the {@link Block} of this BlockConfig.
-         *
-         * @return the damage multiplier
-         */
-        public double getDamageMult()
-        {
-            return damageMult;
-        }
-
-        /**
-         *  Allow the native collision handling for this block also execute.
-         */
-        boolean allowNative()
-        {
-            return allowNative;
-        }
-
-        /**
-         *  The original value of <tt>AbstractBlock#hasCollision</tt> for this block.
-         */
-        boolean hasCollision()
-        {
-            return hasCollision;
-        }
-
-        /**
-         *  The original value of <tt>AbstractBlockState#canOcclude</tt> for the default state of this block.
-         */
-        boolean canOcclude()
-        {
-            return canOcclude;
-        }
-
-        /**
-         * A factory method for creating BlockConfigs.
-         *
-         * @param  block       The Block.
-         * @param  speedMult   The speed multiplier.
-         * @param  damageMult  The damage multiplier.
-         * @param  allowNative Allow default collision handling.
-         * @return             A new BlockConfig.
-         */
-        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative)
-        {
-            return new BlockConfig(block, speedMult, damageMult, allowNative,
-                ((Accessors.AbstractBlockAccessor)block).getHasCollision(),
-                ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).getCanOcclude());
-        }
-
-        /**
-         * A factory method for creating BlockConfigs.
-         *
-         * @param  block        The Block.
-         * @param  speedMult    The speed multiplier.
-         * @param  damageMult   The damage multiplier.
-         * @param  allowNative  Allow default collision handling.
-         * @param  hasCollision The original block value of hasCollision.
-         * @param  canCollude   The original blockstate value of canCollude.
-         * @return              A new BlockConfig.
-         */
-        static BlockConfig create(@Nonnull final Block block, final double speedMult, final double damageMult, final boolean allowNative, final boolean hasCollision, final boolean canCollude)
-        {
-            return new BlockConfig(block, speedMult, damageMult, allowNative, hasCollision, canCollude);
-        }
 
         /**
          * A serializer to convert this BlockConfig into a {@link CompoundNBT} for network traversal.
@@ -553,10 +452,10 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          */
         CompoundNBT toNBT()
         {
-            final CompoundNBT ret = new CompoundNBT();
-            ret.putString(GROUP_RESLOC, Objects.requireNonNull(getBlock().getRegistryName()).toString());
-            ret.putDouble(GROUP_SPMULT, getSpeedMult());
-            ret.putDouble(GROUP_DMGMULT, getDamageMult());
+            final var ret = new CompoundNBT();
+            ret.putString(GROUP_RESLOC, Objects.requireNonNull(block().getRegistryName()).toString());
+            ret.putDouble(GROUP_SPMULT, speedMult());
+            ret.putDouble(GROUP_DMGMULT, damageMult());
             ret.putBoolean(GROUP_ALLOWNATIVE, allowNative());
             ret.putBoolean(ORIG_HAS_COLLISION, hasCollision());
             ret.putBoolean(ORIG_CAN_OCCLUDE, canOcclude());
@@ -571,8 +470,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
          */
         static BlockConfig fromNBT(final CompoundNBT nbt)
         {
-            final Block cfgblock = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(nbt.getString(GROUP_RESLOC)));
-            return BlockConfig.create(
+            final var cfgblock = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(nbt.getString(GROUP_RESLOC)));
+            return new BlockConfig(
                 Objects.requireNonNull(cfgblock, "Block can not be null. Possible client-server mismatch."),
                 nbt.getDouble(GROUP_SPMULT),
                 nbt.getDouble(GROUP_DMGMULT),
@@ -591,8 +490,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         @Override
         public boolean equals(final Object o)
         {
-            return this == o || o != null && getClass() == o.getClass()
-                && Objects.equals(getBlock().getRegistryName(), ((BlockConfig) o).getBlock().getRegistryName());
+            return this == o || o instanceof BlockConfig cfg && Objects.equals(block().getRegistryName(), cfg.block().getRegistryName());
         }
 
         /**
@@ -603,13 +501,13 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         @Override
         public int hashCode()
         {
-            return Objects.requireNonNull(getBlock().getRegistryName()).hashCode();
+            return Objects.requireNonNull(block().getRegistryName()).hashCode();
         }
 
         @Override
         public String toString()
         {
-            return "BlockConfig{" + getBlock().getRegistryName() + "[" + getSpeedMult() + ", " + getDamageMult() + ", " + allowNative() + "]}";
+            return "BlockConfig{" + block().getRegistryName() + "[" + speedMult() + ", " + damageMult() + ", " + allowNative() + "]}";
         }
     }
 }

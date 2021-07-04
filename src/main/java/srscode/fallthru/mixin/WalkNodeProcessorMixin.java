@@ -101,9 +101,9 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
         FallThru.BLOCK_CONFIG_MAP
             .getConfig(this.level.getBlockState(new BlockPos(x, y, z)).getBlock())
             .ifPresent(blockConfig -> {
-                final PathPoint pp = this.getNode(x, y, z);
+                final var pp = this.getNode(x, y, z);
                 pp.type = PathNodeType.WALKABLE;
-                pp.costMalus = (float)Math.max(0.0, (1.0 / blockConfig.getSpeedMult()) * 2.0);
+                pp.costMalus = (float)Math.max(0.0, (1.0 / blockConfig.speedMult()) * 2.0);
                 callback.setReturnValue(pp);
             });
     }

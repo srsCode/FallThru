@@ -74,7 +74,7 @@ final class CommonConfig
 
     CommonConfig(final Builder builder)
     {
-        final String passableBlocksDefault = "tag/" + BlockTags.LEAVES.getName() + "[0.8, 0.8]";
+        final var passableBlocksDefault = "tag/" + BlockTags.LEAVES.getName() + "[0.8, 0.8]";
 
         builder.comment("  FallThru Config").push(FallThru.MOD_ID);
 
