@@ -310,6 +310,11 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      */
     public final record BlockConfig(@Nonnull Block block, double speedMult, double damageMult, boolean allowNative, boolean hasCollision, boolean canOcclude)
     {
+        public BlockConfig
+        {
+            Objects.requireNonNull(block, "Can not create a BlockConfig without a Block.");
+        }
+
         /**
          * An enum for discerning if a configuration string from {@link CommonConfig#passableBlocks}
          * is for a {@link Tag} or a {@link Block}.
