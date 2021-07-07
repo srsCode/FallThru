@@ -1,12 +1,13 @@
 buildscript {
     repositories {
+        mavenLocal() // temporary until mixingradle updates
         maven { url = 'https://maven.minecraftforge.net' }
         maven { url = 'https://repo.spongepowered.org/maven/'}
         mavenCentral()
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.+', changing: true
-        classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
+        classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.8-SNAPSHOT' // custom local build until mixingradle updates
     }
 }
 plugins { id 'org.ajoberstar.reckon' version '0.13.0' }
@@ -23,9 +24,9 @@ reckon {
 }
 
 checkstyle {
-    setConfig resources.text.fromUri('https://srscode.github.io/checkstyle/srsCode-MC-checkstyle.xml')
+    setConfig resources.text.fromUri('https://srscode.github.io/checkstyle/srsCode-MC-checkstyle-J16.xml')
     setReportsDir file("${project.buildDir}/reports/checkstyle")
-    setToolVersion '8.16'
+    setToolVersion '8.41.1' // newer versions look for, and fail to get, deps (ie: net.sf.saxon:Saxon-HE:10.5) in project-level repos (wtf?)
 }
 tasks.withType(Checkstyle) {
     reports.xml.enabled false
