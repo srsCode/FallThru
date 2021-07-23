@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : S2CFallThruUpdatePacket.java
- * Last Modified: 20210703-08:51:23-0400
+ * Last Modified: 20210722-18:28:17-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -32,10 +32,10 @@ package srscode.fallthru;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.PacketBuffer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraftforge.fmllegacy.network.NetworkEvent;
 
 /**
  * The packet used for syncing the server config with the client config.
@@ -45,14 +45,14 @@ final class S2CFallThruUpdatePacket
     /**
      * The serialized {@link BlockConfigMap} to be sent to a client.
      */
-    private final CompoundNBT configBlocks;
+    private final CompoundTag configBlocks;
 
     S2CFallThruUpdatePacket()
     {
         this.configBlocks = FallThru.BLOCK_CONFIG_MAP.toNBT();
     }
 
-    private S2CFallThruUpdatePacket(final CompoundNBT nbt)
+    private S2CFallThruUpdatePacket(final CompoundTag nbt)
     {
         this.configBlocks = nbt;
     }
@@ -60,20 +60,20 @@ final class S2CFallThruUpdatePacket
     /**
      * A S2CFallThruUpdatePacket decoder.
      *
-     * @param  input A {@link PacketBuffer} containing a serialized {@link BlockConfigMap}.
+     * @param  input A {@link FriendlyByteBuf} containing a serialized {@link BlockConfigMap}.
      * @return       A new populated S2CFallThruUpdatePacket.
      */
-    static S2CFallThruUpdatePacket decode(final PacketBuffer input)
+    static S2CFallThruUpdatePacket decode(final FriendlyByteBuf input)
     {
-        return new S2CFallThruUpdatePacket(Objects.requireNonNull(input.readNbt(), "PacketBuffer is null. This should be impossible."));
+        return new S2CFallThruUpdatePacket(Objects.requireNonNull(input.readNbt(), "FriendlyByteBuf is null. This should be impossible."));
     }
 
     /**
      * A S2CFallThruUpdatePacket encoder for sending a serialized {@link BlockConfigMap}.
      *
-     * @param output The {@link PacketBuffer} to write the serialized BlockConfigMap to.
+     * @param output The {@link FriendlyByteBuf} to write the serialized BlockConfigMap to.
      */
-    final void encode(final PacketBuffer output)
+    final void encode(final FriendlyByteBuf output)
     {
         output.writeNbt(configBlocks);
     }

@@ -6,12 +6,12 @@
   "refmap": "fallthru.refmap.json",
   "package": "srscode.fallthru.mixin",
   "mixins": [
-    "Accessors$AbstractBlockAccessor",
-    "Accessors$AbstractBlockStateAccessor",
+    "Accessors$BlockBehaviourAccessor",
+    "Accessors$BlockStateBaseAccessor",
     "Accessors$LivingEntityAccessor",
-    "AbstractBlockPropertiesMixin",
-    "AbstractBlockStateMixin",
-    "WalkNodeProcessorMixin"
+    "BlockBehaviourPropertiesMixin",
+    "BlockStateBaseMixin",
+    "WalkNodeEvaluatorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

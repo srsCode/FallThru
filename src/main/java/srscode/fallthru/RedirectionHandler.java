@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : RedirectionHandler.java
- * Last Modified: 20210704-10:00:10-0400
+ * Last Modified: 20210723-05:17:55-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -35,20 +35,20 @@ import javax.annotation.Nonnull;
 
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.potion.Effects;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.shapes.VoxelShapes;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.world.World;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Material;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
 
 import srscode.fallthru.BlockConfigMap.BlockConfig;
 import srscode.fallthru.mixin.Accessors;
@@ -65,7 +65,7 @@ public final class RedirectionHandler
     private static final DamageSource DMGSRC_LEAVES     = new DamageSource(DAMAGETYPE_LEAVES) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_LEAVES;
         @Nonnull
-        @Override public ITextComponent getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
+        @Override public Component getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
         {
             return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " fell into leaves and was impaled by branches");
         }
@@ -73,7 +73,7 @@ public final class RedirectionHandler
     private static final DamageSource DMGSRC_SNOW       = new DamageSource(DAMAGETYPE_SNOW) {
         private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_SNOW;
         @Nonnull
-        @Override public ITextComponent getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
+        @Override public Component getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
         {
             return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " got packed into a snowball");
         }
@@ -91,7 +91,7 @@ public final class RedirectionHandler
      * @param  motion The motion of the entity from {@link Entity#getDeltaMovement}.
      * @return        <b>true</b> if the entity is moving, <b>false</b> if not.
      */
-    private static boolean isMoving(final Vector3d motion)
+    private static boolean isMoving(final Vec3 motion)
     {
         return Double.compare(motion.x, 0.0) != 0 || Double.compare(motion.z, 0.0) != 0 || (motion.y > 0.07 || motion.y < -0.07);
     }
@@ -130,11 +130,10 @@ public final class RedirectionHandler
      * @param  blockState The {@link BlockState} of the block fallen into.
      * @return            The determined DamageSource.
      */
-    private static DamageSource getDamageSource(final AbstractBlock.AbstractBlockState blockState)
+    private static DamageSource getDamageSource(final BlockBehaviour.BlockStateBase blockState)
     {
-        final var block = blockState.getBlock();
         final var material = blockState.getMaterial();
-        if (block.is(BlockTags.LEAVES)) {
+        if (blockState.is(BlockTags.LEAVES)) {
             return DMGSRC_LEAVES;
         } else if (material == Material.TOP_SNOW || material == Material.SNOW) {
             return DMGSRC_SNOW;
@@ -145,19 +144,19 @@ public final class RedirectionHandler
 
     /**
      * The Collision handler.
-     * This method is called from the mixin injection point in {@link AbstractBlock.AbstractBlockState#entityInside} (entityInside).
+     * This method is called from the mixin injection point in {@link BlockBehaviour.BlockStateBase#entityInside}.
      *
-     * @param  world      The {@link World} of the Block being collided.
-     * @param  pos        The {@link Vector3d} coordinates of the BlockState being collided with.
+     * @param  level      The {@link Level} of the Block being collided.
+     * @param  pos        The {@link Vec3} coordinates of the BlockState being collided with.
      * @param  entity     The {@link Entity} colliding with the BlockState.
      * @param  blockState The {@link BlockState} of the block being collided with.
      * @param  callback   The {@link CallbackInfo} object to handle the return state
      */
-    public static void handleCollision(final World world, final BlockPos pos, final LivingEntity entity, final BlockState blockState, final BlockConfig blockConfig, final CallbackInfo callback)
+    public static void handleCollision(final Level level, final BlockPos pos, final LivingEntity entity, final BlockState blockState, final BlockConfig blockConfig, final CallbackInfo callback)
     {
         final var entitybb = entity.getBoundingBox();
-        final var blockvs  = blockState.getShape(world, pos);
-        final var blockbb  = blockvs.isEmpty() ? VoxelShapes.block().bounds() : blockvs.bounds().move(pos);
+        final var blockvs  = blockState.getShape(level, pos);
+        final var blockbb  = blockvs.isEmpty() ? Shapes.block().bounds() : blockvs.bounds().move(pos);
         // shrink the entity bounding box a bit so that it has to be more inside of a block to trigger collisions
         if (entitybb.inflate(-0.1, 0, -0.1).intersects(blockbb)) {
             // handle falling into blocks
@@ -166,7 +165,7 @@ public final class RedirectionHandler
                 entity.playSound(soundtype.getBreakSound(), soundtype.getVolume(), soundtype.getPitch() * 0.65f);
                 final int dmgThresh = FallThru.config().damageThreshold.get();
                 if (entity.fallDistance > 3f + dmgThresh) {
-                    final var jumpeffect = entity.getEffect(Effects.JUMP);
+                    final var jumpeffect = entity.getEffect(MobEffects.JUMP);
                     final var damage = getDamage(entity.fallDistance, dmgThresh, (jumpeffect == null ? 0.0 : jumpeffect.getAmplifier() + 1), blockConfig.damageMult());
                     if (damage > 0) {
                         entity.hurt(getDamageSource(blockState), (float) damage);
@@ -177,19 +176,19 @@ public final class RedirectionHandler
                     }
 
                     // handle block breaking
-                    final var creative = entity instanceof PlayerEntity && ((PlayerEntity) entity).isCreative();
-                    final var negationEffect = entity.getEffect(Effects.LEVITATION) != null | entity.getEffect(Effects.SLOW_FALLING) != null;
-                    if (!world.isClientSide && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
+                    final var creative = entity instanceof Player && ((Player) entity).isCreative();
+                    final var negationEffect = entity.getEffect(MobEffects.LEVITATION) != null | entity.getEffect(MobEffects.SLOW_FALLING) != null;
+                    if (!level.isClientSide && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
                         // slightly attenuate the entity bounding box to below the entity for block breaking
                         final var breakbb = entitybb.move(0, -0.2, 0);
                         BlockPos.betweenClosedStream(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
                             .filter(filtpos -> {
-                                final var blockstate = world.getBlockState(filtpos);
+                                final var blockstate = level.getBlockState(filtpos);
                                 return blockstate.getMaterial() != Material.AIR
                                     && FallThru.BLOCK_CONFIG_MAP.hasKey(blockstate.getBlock())
                                     && RANDOM.nextInt(BREAK_CHANCE) == 0;
                             })
-                            .forEach(despos -> world.destroyBlock(despos, true));
+                            .forEach(despos -> level.destroyBlock(despos, true));
                     }
                 }
             }
@@ -200,7 +199,7 @@ public final class RedirectionHandler
 
             // handle collision sounds; Only play sounds if the entity is moving; once every 5 ticks.
             final var motion = entity.getDeltaMovement();
-            if (isMoving(motion) && world.getGameTime() % 5 == 0) {
+            if (isMoving(motion) && level.getGameTime() % 5 == 0) {
                 entity.playSound(soundtype.getStepSound(), soundtype.getVolume(), soundtype.getPitch() * 0.75f);
             }
 

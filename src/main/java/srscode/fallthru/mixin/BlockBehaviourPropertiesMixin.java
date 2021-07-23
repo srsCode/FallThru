@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
- * File         : AbstractBlockPropertiesMixin.java
- * Last Modified: 20210703-09:37:37-0400
+ * File         : BlockBehaviourPropertiesMixin.java
+ * Last Modified: 20210722-20:40:47-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -32,7 +32,8 @@ package srscode.fallthru.mixin;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-import net.minecraft.block.AbstractBlock;
+
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import srscode.fallthru.FallThru;
 
@@ -40,27 +41,27 @@ import srscode.fallthru.FallThru;
 /**
  *  This mixin is only required on the client as the changes made are only used for rendering.
  */
-@Mixin(net.minecraft.block.AbstractBlock.Properties.class)
-public class AbstractBlockPropertiesMixin
+@Mixin(net.minecraft.world.level.block.state.BlockBehaviour.Properties.class)
+public class BlockBehaviourPropertiesMixin
 {
     /**
      *  Keep the native IPositionPredicates in order to wrap them.
      *  These will be set in clinit prior to the original fields being rewritten by the wrappers below.
      */
-    private AbstractBlock.IPositionPredicate nativeIsSuffocating = this.isSuffocating;
-    private AbstractBlock.IPositionPredicate nativeIsViewBlocking = this.isViewBlocking;
+    private BlockBehaviour.StatePredicate nativeIsSuffocating  = this.isSuffocating;
+    private BlockBehaviour.StatePredicate nativeIsViewBlocking = this.isViewBlocking;
 
     /**
      *  This IPositionPredicate prevents entities from being pushed out of blocks (required for 1.16.1).
      *  SRG name: field_235816_r_, Official name: isSuffocating
      */
-    @Shadow private AbstractBlock.IPositionPredicate isSuffocating = (blockState, world, pos) ->
+    @Shadow BlockBehaviour.StatePredicate isSuffocating = (blockState, world, pos) ->
         !FallThru.BLOCK_CONFIG_MAP.hasKey(blockState.getBlock()) && this.nativeIsSuffocating.test(blockState, world, pos);
 
     /**
      *  This IPositionPredicate changes the rendering test so that players will be able to see through the block their head is in.
      *  SRG name: field_235817_s_, Official name: isViewBlocking
      */
-    @Shadow private AbstractBlock.IPositionPredicate isViewBlocking = (blockState, world, pos) ->
+    @Shadow BlockBehaviour.StatePredicate isViewBlocking = (blockState, world, pos) ->
         !FallThru.BLOCK_CONFIG_MAP.hasKey(blockState.getBlock()) && this.nativeIsViewBlocking.test(blockState, world, pos);
 }

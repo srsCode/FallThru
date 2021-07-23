@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
- * File         : AbstractBlockStateMixin.java
- * Last Modified: 20210704-09:26:01-0400
+ * File         : BlockStateBaseMixin.java
+ * Last Modified: 20210722-21:30:21-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -36,15 +36,15 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.pathfinding.PathType;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.shapes.VoxelShape;
-import net.minecraft.util.math.shapes.VoxelShapes;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.PathComputationType;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import srscode.fallthru.FallThru;
 import srscode.fallthru.RedirectionHandler;
@@ -55,10 +55,10 @@ import srscode.fallthru.RedirectionHandler;
  *  2. A patch to help entity AI pathfind through configured blocks.
  */
 @SuppressWarnings("AbstractClassNeverImplemented")
-@Mixin(net.minecraft.block.AbstractBlock.AbstractBlockState.class)
-public abstract class AbstractBlockStateMixin
+@Mixin(net.minecraft.world.level.block.state.BlockBehaviour.BlockStateBase.class)
+public abstract class BlockStateBaseMixin
 {
-    AbstractBlockStateMixin()
+    BlockStateBaseMixin()
     {}
 
     @Shadow protected abstract BlockState asState();
@@ -71,8 +71,8 @@ public abstract class AbstractBlockStateMixin
      *  @param callback will be set to cancel unless the native collision handling should also execute.
      */
     @Inject(at = @At("HEAD"), cancellable = true,
-        method = "entityInside(Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/entity/Entity;)V")
-    private void entityInside(final World world, final BlockPos pos, final Entity entity, final CallbackInfo callback)
+        method = "entityInside(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;)V")
+    private void entityInside(final Level world, final BlockPos pos, final Entity entity, final CallbackInfo callback)
     {
         if (entity instanceof LivingEntity) {
             FallThru.BLOCK_CONFIG_MAP.getConfig(this.asState().getBlock())
@@ -87,10 +87,10 @@ public abstract class AbstractBlockStateMixin
      *  @param callback will always be set to <tt>true</tt> for configured blocks, preventing native functionality.
      */
     @Inject(at = @At("HEAD"), cancellable = true,
-        method = "isPathfindable(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathType;)Z")
-    private void isPathfindable(final IBlockReader world, final BlockPos pos, final PathType type, final CallbackInfoReturnable<Boolean> callback)
+        method = "isPathfindable(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/pathfinder/PathComputationType;)Z")
+    private void isPathfindable(final BlockGetter world, final BlockPos pos, final PathComputationType type, final CallbackInfoReturnable<Boolean> callback)
     {
-        if (type == PathType.LAND && FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
+        if (type == PathComputationType.LAND && FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
             callback.setReturnValue(true);
         }
     }
@@ -102,11 +102,11 @@ public abstract class AbstractBlockStateMixin
      *  @param callback will return <tt>VoxelShapes#empty</tt> for configured blocks, preventing native functionality.
      */
     @Inject(at = @At("HEAD"), cancellable = true,
-        method = "getCollisionShape(Lnet/minecraft/world/IBlockReader;Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/util/math/shapes/VoxelShape;")
-    private void getCollisionShape(final IBlockReader world, final BlockPos pos, final CallbackInfoReturnable<VoxelShape> callback)
+        method = "getCollisionShape(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/shapes/VoxelShape;")
+    private void getCollisionShape(final BlockGetter world, final BlockPos pos, final CallbackInfoReturnable<VoxelShape> callback)
     {
         if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
-            callback.setReturnValue(VoxelShapes.empty());
+            callback.setReturnValue(Shapes.empty());
         }
     }
 }

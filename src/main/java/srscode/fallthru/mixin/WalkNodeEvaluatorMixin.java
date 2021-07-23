@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
- * File         : WalkNodeProcessorMixin.java
- * Last Modified: 20210704-09:25:05-0400
+ * File         : WalkNodeEvaluatorMixin.java
+ * Last Modified: 20210722-21:30:21-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -34,12 +34,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import net.minecraft.pathfinding.NodeProcessor;
-import net.minecraft.pathfinding.PathNodeType;
-import net.minecraft.pathfinding.PathPoint;
-import net.minecraft.util.Direction;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IBlockReader;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.Node;
+import net.minecraft.world.level.pathfinder.NodeEvaluator;
 
 import srscode.fallthru.FallThru;
 
@@ -48,10 +48,10 @@ import srscode.fallthru.FallThru;
  *  not pathfind around them or get stuck in them.
  */
 @SuppressWarnings("AbstractClassNeverImplemented")
-@Mixin(net.minecraft.pathfinding.WalkNodeProcessor.class)
-public abstract class WalkNodeProcessorMixin extends NodeProcessor
+@Mixin(net.minecraft.world.level.pathfinder.WalkNodeEvaluator.class)
+public abstract class WalkNodeEvaluatorMixin extends NodeEvaluator
 {
-    WalkNodeProcessorMixin()
+    WalkNodeEvaluatorMixin()
     {}
 
     /**
@@ -60,13 +60,13 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
      *
      *  @param callback Returns the penalized PathPoint.
      */
-    @Inject(at = @At("HEAD"), cancellable = true,
-        method = "evaluateBlockPathType(Lnet/minecraft/world/IBlockReader;ZZLnet/minecraft/util/math/BlockPos;Lnet/minecraft/pathfinding/PathNodeType;)Lnet/minecraft/pathfinding/PathNodeType;")
-    private void evaluateBlockPathType(final IBlockReader world, final boolean closed, final boolean door, final BlockPos pos,
-                                       final PathNodeType pathNodeType, final CallbackInfoReturnable<PathNodeType> callback)
+    @Inject(at = @At("HEAD"), cancellable = true, method = "evaluateBlockPathType(Lnet/minecraft/world/level/BlockGetter;ZZLnet/minecraft/core/BlockPos;" +
+        "Lnet/minecraft/world/level/pathfinder/BlockPathTypes;)Lnet/minecraft/world/level/pathfinder/BlockPathTypes;")
+    private void evaluateBlockPathType(final BlockGetter world, final boolean closed, final boolean door, final BlockPos pos,
+                                       final BlockPathTypes pathNodeType, final CallbackInfoReturnable<BlockPathTypes> callback)
     {
         if (FallThru.BLOCK_CONFIG_MAP.hasKey(world.getBlockState(pos).getBlock())) {
-            callback.setReturnValue(PathNodeType.WALKABLE);
+            callback.setReturnValue(BlockPathTypes.WALKABLE);
         }
     }
 
@@ -77,11 +77,11 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
      *  @param callback Returns <tt>PathNodeType.WALKABLE</tt> if this is a passable block.
      */
     @Inject(at = @At("HEAD"), cancellable = true,
-        method = "getBlockPathType(Lnet/minecraft/world/IBlockReader;III)Lnet/minecraft/pathfinding/PathNodeType;")
-    private void getBlockPathType(final IBlockReader world, final int x, final int y, final int z, final CallbackInfoReturnable<PathNodeType> callback)
+        method = "getBlockPathType(Lnet/minecraft/world/level/BlockGetter;III)Lnet/minecraft/world/level/pathfinder/BlockPathTypes;")
+    private void getBlockPathType(final BlockGetter world, final int x, final int y, final int z, final CallbackInfoReturnable<BlockPathTypes> callback)
     {
         if (FallThru.BLOCK_CONFIG_MAP.hasKey(world.getBlockState(new BlockPos(x, y, z)).getBlock())) {
-            callback.setReturnValue(PathNodeType.WALKABLE);
+            callback.setReturnValue(BlockPathTypes.WALKABLE);
         }
     }
 
@@ -89,22 +89,22 @@ public abstract class WalkNodeProcessorMixin extends NodeProcessor
      *  A patch for pathfinding to add a penalty for entities pathfinding through passable blocks.
      *  The penalty is 2x the inverse of the configured speed multiplier, which shouldn't be overly disruptive
      *  of the natural path, but enough for entities to avoid passable blocks in most cases.
-     *  SRG name: func_186332_a, Official name: getLandNode
+     *  SRG name: func_186332_a, Official name: findAcceptedNode
      *
-     *  @param callback Returns the penalized PathPoint.
+     *  @param callback Returns the penalized Path.
      */
     @Inject(at = @At("HEAD"), cancellable = true,
-        method = "getLandNode(IIIIDLnet/minecraft/util/Direction;Lnet/minecraft/pathfinding/PathNodeType;)Lnet/minecraft/pathfinding/PathPoint;")
-    private void getLandNode(final int x, final int y, final int z, final int stepHeight, final double groundYIn,
-                             final Direction facing, final PathNodeType nodeType, final CallbackInfoReturnable<PathPoint> callback)
+        method = "findAcceptedNode(IIIIDLnet/minecraft/core/Direction;Lnet/minecraft/world/level/pathfinder/BlockPathTypes;)Lnet/minecraft/world/level/pathfinder/Node;")
+    private void findAcceptedNode(final int x, final int y, final int z, final int stepHeight, final double groundYIn,
+                             final Direction facing, final BlockPathTypes nodeType, final CallbackInfoReturnable<Node> callback)
     {
         FallThru.BLOCK_CONFIG_MAP
             .getConfig(this.level.getBlockState(new BlockPos(x, y, z)).getBlock())
             .ifPresent(blockConfig -> {
-                final var pp = this.getNode(x, y, z);
-                pp.type = PathNodeType.WALKABLE;
-                pp.costMalus = (float)Math.max(0.0, (1.0 / blockConfig.speedMult()) * 2.0);
-                callback.setReturnValue(pp);
+                final var node = this.getNode(x, y, z);
+                node.type = BlockPathTypes.WALKABLE;
+                node.costMalus = (float)Math.max(0.0, (1.0 / blockConfig.speedMult()) * 2.0);
+                callback.setReturnValue(node);
             });
     }
 }

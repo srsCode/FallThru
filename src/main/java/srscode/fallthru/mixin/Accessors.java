@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : Accessors.java
- * Last Modified: 20210704-09:46:12-0400
+ * Last Modified: 20210722-21:30:21-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -47,8 +47,8 @@ public final class Accessors
      *  setting it so that entities can pass through the block.
      *  SRG name: field_235688_at_, Official name: hasCollision
      */
-    @Mixin(net.minecraft.block.AbstractBlock.class)
-    public interface AbstractBlockAccessor
+    @Mixin(net.minecraft.world.level.block.state.BlockBehaviour.class)
+    public interface BlockBehaviourAccessor
     {
         @Accessor boolean getHasCollision();
 
@@ -64,8 +64,8 @@ public final class Accessors
      *  are highly unlikely to make passable.
      *  SRG name: field_235707_k_, Official name:canOcclude
      */
-    @Mixin(net.minecraft.block.AbstractBlock.AbstractBlockState.class)
-    public interface AbstractBlockStateAccessor
+    @Mixin(net.minecraft.world.level.block.state.BlockBehaviour.BlockStateBase.class)
+    public interface BlockStateBaseAccessor
     {
         @Accessor boolean getCanOcclude();
 
@@ -78,7 +78,7 @@ public final class Accessors
      *  reduction differently while jumping so that the entity is able to jump atleast a full block height.
      *  SRG name: field_70703_bu, Official name: jumping
      */
-    @Mixin(net.minecraft.entity.LivingEntity.class)
+    @Mixin(net.minecraft.world.entity.LivingEntity.class)
     public interface LivingEntityAccessor
     {
         @Accessor boolean getJumping();

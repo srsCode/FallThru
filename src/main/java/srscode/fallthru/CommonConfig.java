@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : CommonConfig.java
- * Last Modified: 20210703-18:15:07-0400
+ * Last Modified: 20210722-18:35:16-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -40,15 +40,15 @@ import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.ResourceLocation;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.ForgeConfigSpec.BooleanValue;
 import net.minecraftforge.common.ForgeConfigSpec.Builder;
 import net.minecraftforge.common.ForgeConfigSpec.ConfigValue;
 import net.minecraftforge.common.ForgeConfigSpec.IntValue;
-import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
 import srscode.fallthru.BlockConfigMap.BlockConfig;
@@ -186,9 +186,9 @@ final class CommonConfig
      * is starting, at which time the syncing will occur.
      * This will always cause syncing on a dedicated server that will propogate to clients.
      *
-     * @param event The {@link ModConfig.Reloading} event
+     * @param event The {@link ModConfigEvent.Reloading} event
      */
-    void onConfigUpdate(final ModConfig.Reloading event)
+    void onConfigUpdate(final ModConfigEvent.Reloading event)
     {
         if (event.getConfig().getModId().equals(FallThru.MOD_ID)) {
             if (FMLEnvironment.dist == Dist.CLIENT && (Minecraft.getInstance().getSingleplayerServer() == null || Minecraft.getInstance().getConnection() != null)) {

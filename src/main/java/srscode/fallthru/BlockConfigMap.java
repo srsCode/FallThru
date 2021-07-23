@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20210703-10:12:49-0400
+ * Last Modified: 20210722-21:30:21-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -52,13 +52,13 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.material.Material;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.Tag;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.Material;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.util.Constants;
@@ -174,7 +174,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      *
      * @param blockConfigs A Collection of BlockConfigs.
      */
-    void syncFromRemote(final CompoundNBT blockConfigs)
+    void syncFromRemote(final CompoundTag blockConfigs)
     {
         FallThru.LOGGER.debug(MARKER_BLOCKCFG, "Syncing from remote config");
         clear();
@@ -182,29 +182,29 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     }
 
     /**
-     * A serializer to convert all of the {@link BlockConfig}s in this map to a CompoundNBT tag used for network traversal.
+     * A serializer to convert all of the {@link BlockConfig}s in this map to a CompoundTag tag used for network traversal.
      *
-     * @return A {@link CompoundNBT} representation of this {@code BlockConfigMap}s contents.
+     * @return A {@link CompoundTag} representation of this {@code BlockConfigMap}s contents.
      */
-    CompoundNBT toNBT()
+    CompoundTag toNBT()
     {
-        final var ret = new CompoundNBT();
-        ret.put(NBT_CONFIG_TAG, values().stream().map(BlockConfig::toNBT).collect(Collectors.toCollection(ListNBT::new)));
+        final var ret = new CompoundTag();
+        ret.put(NBT_CONFIG_TAG, values().stream().map(BlockConfig::toNBT).collect(Collectors.toCollection(ListTag::new)));
         return ret;
     }
 
     /**
      * A deserializer to deserialize a {@code BlockConfigMap}s contents received from a remote server.
      *
-     * @param blocklist A {@link CompoundNBT} representation of a {@code BlockConfigMap}.
+     * @param blocklist A {@link CompoundTag} representation of a {@code BlockConfigMap}.
      */
-    void fromNBT(final CompoundNBT blocklist)
+    void fromNBT(final CompoundTag blocklist)
     {
         addAll(
             blocklist
                 .getList(NBT_CONFIG_TAG, Constants.NBT.TAG_COMPOUND)
                 .stream()
-                .map(CompoundNBT.class::cast)
+                .map(CompoundTag.class::cast)
                 .map(BlockConfig::fromNBT)
                 .collect(Collectors.toList())
         );
@@ -259,7 +259,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     }
 
     /**
-     *  A helper method for updating blocks upon being added or removed. This is dependent on the {@link Accessors.AbstractBlockStateAccessor} mixin.
+     *  A helper method for updating blocks upon being added or removed. This is dependent on the {@link Accessors.BlockStateBaseAccessor} mixin.
      *
      *  @param blockConfig The BlockConfig of the block being added or removed.
      *  @param adding      A boolean signifying if this BlockConfig is being added or removed. (true = added, false = removed)
@@ -267,8 +267,8 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     private void updateBlock(final BlockConfig blockConfig, final boolean adding)
     {
         final var block = blockConfig.block();
-        ((Accessors.AbstractBlockAccessor)block).setHasCollision(!adding && blockConfig.hasCollision());
-        ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).setCanOcclude(!adding && blockConfig.canOcclude());
+        ((Accessors.BlockBehaviourAccessor)block).setHasCollision(!adding && blockConfig.hasCollision());
+        ((Accessors.BlockStateBaseAccessor)block.defaultBlockState()).setCanOcclude(!adding && blockConfig.canOcclude());
     }
 
     /**
@@ -445,19 +445,19 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
             return blocks
                 .stream()
                 .map(block -> new BlockConfig(block, spmult, dmgmult, allowdef,
-                    ((Accessors.AbstractBlockAccessor)block).getHasCollision(),
-                    ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).getCanOcclude()))
+                    ((Accessors.BlockBehaviourAccessor)block).getHasCollision(),
+                    ((Accessors.BlockStateBaseAccessor)block.defaultBlockState()).getCanOcclude()))
                 .collect(Collectors.toSet());
         };
 
         /**
-         * A serializer to convert this BlockConfig into a {@link CompoundNBT} for network traversal.
+         * A serializer to convert this BlockConfig into a {@link CompoundTag} for network traversal.
          *
-         * @return the CompoundNBT tag of this BlockConfig
+         * @return the CompoundTag tag of this BlockConfig
          */
-        CompoundNBT toNBT()
+        CompoundTag toNBT()
         {
-            final var ret = new CompoundNBT();
+            final var ret = new CompoundTag();
             ret.putString(GROUP_RESLOC, Objects.requireNonNull(block().getRegistryName()).toString());
             ret.putDouble(GROUP_SPMULT, speedMult());
             ret.putDouble(GROUP_DMGMULT, damageMult());
@@ -468,12 +468,12 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         }
 
         /**
-         * A deserializer to create a BlockConfig instance from a {@link CompoundNBT}.
+         * A deserializer to create a BlockConfig instance from a {@link CompoundTag}.
          *
          * @param  nbt The serialized BlockConfig,
          * @return     The deserialized BlockConfig.
          */
-        static BlockConfig fromNBT(final CompoundNBT nbt)
+        static BlockConfig fromNBT(final CompoundTag nbt)
         {
             final var cfgblock = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(nbt.getString(GROUP_RESLOC)));
             return new BlockConfig(

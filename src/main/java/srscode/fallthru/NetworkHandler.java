@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : NetworkHandler.java
- * Last Modified: 20210703-08:51:23-0400
+ * Last Modified: 20210722-18:30:24-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -32,17 +32,17 @@ package srscode.fallthru;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
-import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.fml.network.PacketDistributor;
-import net.minecraftforge.fml.network.simple.SimpleChannel;
+import net.minecraftforge.fmllegacy.network.NetworkRegistry;
+import net.minecraftforge.fmllegacy.network.PacketDistributor;
+import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
+import net.minecraftforge.fmlserverevents.FMLServerStartingEvent;
 
 @Mod.EventBusSubscriber(modid = FallThru.MOD_ID)
 public enum NetworkHandler
@@ -78,7 +78,7 @@ public enum NetworkHandler
     /**
      * A helper for syncing a single client from a remote server. Useful for when a player connects to the server.
      */
-    void updatePlayer(final ServerPlayerEntity player)
+    void updatePlayer(final ServerPlayer player)
     {
         FallThru.LOGGER.debug(MARKER_NETWORK, "Sending config update packet to: {}, on channel: {}", player.getName().getString(), NET_CHANNEL_NAME);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CFallThruUpdatePacket());
@@ -116,7 +116,7 @@ public enum NetworkHandler
         final var player = event.getPlayer();
         final var server = player.getServer();
         if (server != null && server.isDedicatedServer()) {
-            server.execute(() -> INSTANCE.updatePlayer((ServerPlayerEntity) player));
+            server.execute(() -> INSTANCE.updatePlayer((ServerPlayer) player));
         }
     }
 }

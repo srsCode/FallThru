@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : FallThru.java
- * Last Modified: 20210703-08:51:23-0400
+ * Last Modified: 20210722-17:20:32-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -37,17 +37,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.MarkerManager;
 
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.ForgeI18n;
 import net.minecraftforge.fml.Logging;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fmllegacy.ForgeI18n;
 
 
 @SuppressWarnings("WeakerAccess")
@@ -89,10 +89,10 @@ public final class FallThru
         return commonConfig;
     }
 
-    ITextComponent getTranslation(@Nullable final ITextComponent textComponent, final String key, final Object... objs)
+    Component getTranslation(@Nullable final Component textComponent, final String key, final Object... objs)
     {
         return ForgeI18n.getPattern(key).equals(key)
-            ? textComponent != null ? textComponent.plainCopy().append(Arrays.toString(objs)) : new StringTextComponent(Arrays.toString(objs))
-            : textComponent != null ? new TranslationTextComponent(key, textComponent) : new TranslationTextComponent(key, objs);
+            ? textComponent != null ? textComponent.plainCopy().append(Arrays.toString(objs)) : new TextComponent(Arrays.toString(objs))
+            : textComponent != null ? new TranslatableComponent(key, textComponent) : new TranslatableComponent(key, objs);
     }
 }
