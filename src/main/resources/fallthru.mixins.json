@@ -1,6 +1,6 @@
 {
-  "minVersion": "0.8",
-  "compatibilityLevel": "JAVA_8",
+  "minVersion": "0.8.4",
+  "compatibilityLevel": "JAVA_16",
   "required": true,
   "verbose": true,
   "refmap": "fallthru.refmap.json",

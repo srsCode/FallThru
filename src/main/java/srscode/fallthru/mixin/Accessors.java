@@ -30,6 +30,7 @@
 package srscode.fallthru.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 
@@ -52,6 +53,7 @@ public final class Accessors
     {
         @Accessor boolean getHasCollision();
 
+        @Mutable
         @Accessor void setHasCollision(final boolean val);
     }
 
@@ -67,8 +69,7 @@ public final class Accessors
     @Mixin(net.minecraft.world.level.block.state.BlockBehaviour.BlockStateBase.class)
     public interface BlockStateBaseAccessor
     {
-        @Accessor boolean getCanOcclude();
-
+        @Mutable
         @Accessor void setCanOcclude(final boolean solid);
     }
 

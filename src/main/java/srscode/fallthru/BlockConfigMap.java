@@ -446,7 +446,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                 .stream()
                 .map(block -> new BlockConfig(block, spmult, dmgmult, allowdef,
                     ((Accessors.BlockBehaviourAccessor)block).getHasCollision(),
-                    ((Accessors.BlockStateBaseAccessor)block.defaultBlockState()).getCanOcclude()))
+                    block.defaultBlockState().canOcclude()))
                 .collect(Collectors.toSet());
         };
 
