@@ -1,16 +1,19 @@
 buildscript {
     repositories {
         maven { url = 'https://maven.minecraftforge.net' }
+        maven { url = 'https://maven.parchmentmc.org' }
         maven { url = 'https://repo.spongepowered.org/maven/'}
         mavenCentral()
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
+        classpath 'org.parchmentmc:librarian:1.+'
         classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
     }
 }
 plugins { id 'org.ajoberstar.reckon' version '0.13.0' }
 apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'org.parchmentmc.librarian.forgegradle'
 apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'checkstyle'
 if (file('../.etc/srscode-MC.gradle').exists()) { apply from:'../.etc/srscode-MC.gradle' }
@@ -35,7 +38,7 @@ tasks.withType(Checkstyle) {
 sourceSets.main.ext.refMap = 'fallthru.refmap.json'
 def mixin_file = 'fallthru.mixins.json'
 minecraft {
-    mappings channel: project.mapping_channel, version: project.mapping_version
+    mappings channel: 'parchment', version: project.parchment_version
     runs {
         client {
             taskName 'fallthruClient'
@@ -62,7 +65,6 @@ minecraft {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${project.mc_version}-${project.forge_version}"
-    implementation "org.spongepowered:mixin:${project.mixinAP_version}" // temporary until Mixin is readded to Forge
     annotationProcessor "org.spongepowered:mixin:${project.mixinAP_version}:processor"
 }
 

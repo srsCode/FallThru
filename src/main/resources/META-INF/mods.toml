@@ -21,7 +21,7 @@ The configuration is versatile and each block can be configured individually.
 [[dependencies.fallthru]]
 modId           = "forge"
 mandatory       = true
-versionRange    = "[37,)"
+versionRange    = "[37.0.59,)" # 37.0.59 is the minimum version for Mixin
 ordering        = "NONE"
 side            = "BOTH"
 
