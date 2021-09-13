@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : Accessors.java
- * Last Modified: 20210704-09:46:12-0400
+ * Last Modified: 20210912-21:03:54-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -30,6 +30,7 @@
 package srscode.fallthru.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 
@@ -52,6 +53,7 @@ public final class Accessors
     {
         @Accessor boolean getHasCollision();
 
+        @Mutable
         @Accessor void setHasCollision(final boolean val);
     }
 
@@ -67,8 +69,7 @@ public final class Accessors
     @Mixin(net.minecraft.block.AbstractBlock.AbstractBlockState.class)
     public interface AbstractBlockStateAccessor
     {
-        @Accessor boolean getCanOcclude();
-
+        @Mutable
         @Accessor void setCanOcclude(final boolean solid);
     }
 

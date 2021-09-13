@@ -1,7 +1,7 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20210703-10:12:49-0400
+ * Last Modified: 20210912-20:57:30-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
@@ -527,7 +527,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         {
             return new BlockConfig(block, speedMult, damageMult, allowNative,
                 ((Accessors.AbstractBlockAccessor)block).getHasCollision(),
-                ((Accessors.AbstractBlockStateAccessor)block.defaultBlockState()).getCanOcclude());
+                block.defaultBlockState().canOcclude());
         }
 
         /**
