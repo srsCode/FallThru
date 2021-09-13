@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : CommonConfig.java
- * Last Modified: 20210703-18:15:07-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

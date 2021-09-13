@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : WalkNodeProcessorMixin.java
- * Last Modified: 20210704-09:25:05-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

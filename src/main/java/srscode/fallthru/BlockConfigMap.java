@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : BlockConfigMap.java
- * Last Modified: 20210912-20:57:30-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

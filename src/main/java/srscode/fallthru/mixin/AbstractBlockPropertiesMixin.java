@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : AbstractBlockPropertiesMixin.java
- * Last Modified: 20210703-09:37:37-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

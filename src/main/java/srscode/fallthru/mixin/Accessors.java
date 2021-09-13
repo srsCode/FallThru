@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : Accessors.java
- * Last Modified: 20210912-21:03:54-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
