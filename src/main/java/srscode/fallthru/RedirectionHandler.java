@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : RedirectionHandler.java
- * Last Modified: 20210723-05:17:55-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

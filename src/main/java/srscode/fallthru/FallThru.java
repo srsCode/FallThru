@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : FallThru.java
- * Last Modified: 20210722-17:20:32-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

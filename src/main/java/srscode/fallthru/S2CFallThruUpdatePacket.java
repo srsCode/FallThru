@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : S2CFallThruUpdatePacket.java
- * Last Modified: 20210722-18:28:17-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

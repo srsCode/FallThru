@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : BlockStateBaseMixin.java
- * Last Modified: 20210722-21:30:21-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *

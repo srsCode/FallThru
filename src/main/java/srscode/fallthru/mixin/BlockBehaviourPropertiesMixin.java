@@ -1,7 +1,6 @@
 /*
  * Project      : FallThru
  * File         : BlockBehaviourPropertiesMixin.java
- * Last Modified: 20210722-20:40:47-0400
  *
  * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
