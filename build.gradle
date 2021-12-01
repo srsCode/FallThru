@@ -18,7 +18,7 @@ apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'checkstyle'
 if (file('../.etc/srscode-MC.gradle').exists()) { apply from:'../.etc/srscode-MC.gradle' }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(16)
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 reckon {
     scopeFromProp()

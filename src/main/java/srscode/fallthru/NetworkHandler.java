@@ -35,13 +35,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fmllegacy.network.NetworkRegistry;
-import net.minecraftforge.fmllegacy.network.PacketDistributor;
-import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
-import net.minecraftforge.fmlserverevents.FMLServerStartingEvent;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.simple.SimpleChannel;
 
 @Mod.EventBusSubscriber(modid = FallThru.MOD_ID)
 public enum NetworkHandler
@@ -95,13 +95,13 @@ public enum NetworkHandler
 
     /**
      * This Event handler syncs the {@link BlockConfigMap} with {@link CommonConfig#passableBlocks}.
-     * {@link FMLServerStartingEvent} is the earliest lifecycle event that this can be done, as the
+     * {@link ServerStartingEvent} is the earliest lifecycle event that this can be done, as the
      * game's Tags (from datapacks) will have not being populated yet. Yay for data-driven structures!
      *
      * @param event The FMLServerStartingEvent.
      */
     @SubscribeEvent
-    public static void onServerStarting(final FMLServerStartingEvent event)
+    public static void onServerStarting(final ServerStartingEvent event)
     {
         FallThru.BLOCK_CONFIG_MAP.syncLocal();
     }

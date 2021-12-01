@@ -41,12 +41,12 @@ import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
 
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.common.ForgeI18n;
 import net.minecraftforge.fml.Logging;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fmllegacy.ForgeI18n;
 
 
 @SuppressWarnings("WeakerAccess")
