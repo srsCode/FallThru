@@ -72,7 +72,7 @@ final class S2CFallThruUpdatePacket
      *
      * @param output The {@link FriendlyByteBuf} to write the serialized BlockConfigMap to.
      */
-    final void encode(final FriendlyByteBuf output)
+    void encode(final FriendlyByteBuf output)
     {
         output.writeNbt(configBlocks);
     }

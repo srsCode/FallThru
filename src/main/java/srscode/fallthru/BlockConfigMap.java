@@ -53,14 +53,13 @@ import org.apache.logging.log4j.MarkerManager;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.Tag;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.material.Material;
 
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -201,7 +200,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
     {
         addAll(
             blocklist
-                .getList(NBT_CONFIG_TAG, Constants.NBT.TAG_COMPOUND)
+                .getList(NBT_CONFIG_TAG, Tag.TAG_COMPOUND)
                 .stream()
                 .map(CompoundTag.class::cast)
                 .map(BlockConfig::fromNBT)
@@ -307,7 +306,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
      * A class to store the configuration of passable blocks.
      * With the exception of the {@link Block} referenced, all of the class members are immutable.
      */
-    public final record BlockConfig(@Nonnull Block block, double speedMult, double damageMult, boolean allowNative, boolean hasCollision, boolean canOcclude)
+    public record BlockConfig(@Nonnull Block block, double speedMult, double damageMult, boolean allowNative, boolean hasCollision, boolean canOcclude)
     {
         public BlockConfig
         {
@@ -316,7 +315,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
 
         /**
          * An enum for discerning if a configuration string from {@link CommonConfig#passableBlocks}
-         * is for a {@link Tag} or a {@link Block}.
+         * is for a {@link net.minecraft.tags.Tag} or a {@link Block}.
          */
         enum ItemType
         {
@@ -370,9 +369,9 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
         };
 
         /**
-         * A {@link Comparator} to sort the config strings so that all {@link Tag} entries are processed before {@link Block}
-         * entries, so that if a Block entry is also the member of a Tag entry, the singular Block entry will take precedence
-         * and override the Tag entry. This is so that users can special-case some blocks if they want to.
+         * A {@link Comparator} to sort the config strings so that all {@link net.minecraft.tags.Tag} entries are processed before {@link Block}
+         * entries, so that if a Block entry is also the member of a BlockTag, the singular Block entry will take precedence
+         * and override the BlockTag entry. This is so that users can special-case some blocks if they want to.
          */
         static final Comparator<String> CFGSTR_SORTER = (cfgstr1, cfgstr2) -> {
             final var pattern = Pattern.compile("^\\s*" + BlockConfig.PATTERN_ITEMTYPE + "\\/\\w.*$", Pattern.CASE_INSENSITIVE);
@@ -435,7 +434,7 @@ public final class BlockConfigMap extends Int2ObjectArrayMap<BlockConfig>
                         })
                         .collect(Collectors.toSet());
                     if (tagBlocks.isEmpty()) {
-                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Could not find any blocks for Tag, or Tag does not exist: {}", resloc);
+                        FallThru.LOGGER.error(MARKER_BLOCKCFG, "Could not find any blocks for BlockTag, or BlockTag does not exist: {}", resloc);
                     }
                     blocks.addAll(tagBlocks);
                 }
