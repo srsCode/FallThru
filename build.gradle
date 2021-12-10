@@ -38,7 +38,7 @@ tasks.withType(Checkstyle) {
 sourceSets.main.ext.refMap = 'fallthru.refmap.json'
 def mixin_file = 'fallthru.mixins.json'
 minecraft {
-    mappings channel: 'parchment', version: project.parchment_version
+    mappings channel: 'official', version: project.mc_version
     runs {
         client {
             taskName 'fallthruClient'
