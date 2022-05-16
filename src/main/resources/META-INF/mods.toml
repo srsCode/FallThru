@@ -1,5 +1,5 @@
 modLoader       = "javafml"
-loaderVersion   = "[38,)"
+loaderVersion   = "[40,)"
 license         = "MIT License"
 issueTrackerURL = "https://github.com/srscode/FallThru/issues/"
 
@@ -21,13 +21,13 @@ The configuration is versatile and each block can be configured individually.
 [[dependencies.fallthru]]
 modId           = "forge"
 mandatory       = true
-versionRange    = "[38.0.6,)" # 38.0.6 is the minimum version for Mixin
+versionRange    = "[40,)"
 ordering        = "NONE"
 side            = "BOTH"
 
 [[dependencies.fallthru]]
 modId           = "minecraft"
 mandatory       = true
-versionRange    = "[1.18,)"
+versionRange    = "[1.18.2,)"
 ordering        = "NONE"
 side            = "BOTH"
