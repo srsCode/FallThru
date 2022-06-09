@@ -21,13 +21,13 @@ The configuration is versatile and each block can be configured individually.
 [[dependencies.fallthru]]
 modId           = "forge"
 mandatory       = true
-versionRange    = "[36,37)"
+versionRange    = "[36.2.34,37)"
 ordering        = "NONE"
 side            = "BOTH"
 
 [[dependencies.fallthru]]
 modId           = "minecraft"
 mandatory       = true
-versionRange    = "[1.16,1.17)"
+versionRange    = "[1.16.5,1.17)"
 ordering        = "NONE"
 side            = "BOTH"
