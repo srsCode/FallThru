@@ -32,7 +32,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Marker;
@@ -64,6 +66,7 @@ final class CommonConfig
     private static final String LANGKEY_SETTING_PASSABLEBLOCKS  = "passableBlocks";
     private static final String LANGKEY_SETTING_BLACKLISTBLOCKS = "blacklistBlocks";
     private static final Predicate<Object> RESLOC_VALIDATOR     = s -> s instanceof String && ResourceLocation.tryParse((String) s) != null;
+    private static final Supplier<String> PASSABLE_DEFAULT      = () -> "#" + BlockTags.LEAVES.location() + "[0.8, 0.8]";
 
     final IntValue     damageThreshold;
     final BooleanValue doBlockBreaking;
@@ -73,8 +76,6 @@ final class CommonConfig
 
     CommonConfig(final Builder builder)
     {
-        final var passableBlocksDefault = "tag/" + BlockTags.LEAVES.getName() + "[0.8, 0.8]";
-
         builder.comment("  FallThru Config").push(FallThru.MOD_ID);
 
         this.damageThreshold = builder
@@ -105,31 +106,33 @@ final class CommonConfig
             .translation(getLangKey(LANGKEY_CONFIG, LANGKEY_SETTING_BLOCKBREAK))
             .define(LANGKEY_SETTING_BLOCKBREAK, true);
 
+        final var passableBlocksDefault = PASSABLE_DEFAULT.get();
         this.passableBlocks = builder
             .comment(
                 "",
                 "  A list of configurations for Blocks to allow passing through. A configuration is formatted as fallows:",
                 "",
-                "    <block|tag>/<ResLoc>[speedmult, damagemult, true]",
+                "    #<ResLoc>[speedmult, damagemult, true]",
                 "",
                 "  Where:",
-                "    <block|tag> - signifies if this is an entry for a single Block, or for a Tag representing multiple Blocks.",
-                "    <ResLoc>    - is an legitimate ResourceLocation for a Block or Tag (eg: 'minecraft:oak_leaves' (Block),",
-                "                  or: 'minecraft:leaves' (Tag for all leaves).",
+                "    #           - (Optional) Prepending the resource location with a '#' signifies that the resource location is a reference",
+                "                  to a Tag representing multiple Blocks. Without a '#' the reference is assumed to be for a single Block.",
+                "    <ResLoc>    - is an legitimate ResourceLocation for a Tag or Block (eg: '#minecraft:leaves' (Tag for all leaves),",
+                "                  or: 'minecraft:oak_leaves' (Block).",
                 "    speedMult   - The speed reduction multiplier expressed in decimal. Valid range: 0.05 - 1.0",
-                "                  How much entities slow down when moving through this Block.",
+                "                  How much entities slow down when moving through the Block(s).",
                 "    damageMult  - The damage reduction multiplier expressed in decimal. Valid range: 0.05 - 1.0",
                 "                  The percentage of damage dealt when falling into the Block(s).",
                 "    true        - (Optional) Add 'true' to also execute the native collision handling",
                 "                  for this block. Default: false (omitted).",
                 "",
                 "  Example entries:",
-                "    \"block/biomesoplenty:orange_autumn_leaves[0.75, 0.6, true]\"",
-                "    \"tag/minecraft:leaves[0.8, 0.6]\"",
+                "    \"biomesoplenty:orange_autumn_leaves[0.75, 0.6, true]\"",
+                "    \"#minecraft:leaves[0.8, 0.6]\"",
                 "",
                 "  Notes:",
-                "    1. Tags are processed first so that you can override the configuration of a specific Block that has",
-                "       already been configured as a member of a Tag.",
+                "    1. Entries for Blocks have precedence over Tags so that you can override the configuration of a specific Block that is also",
+                "       the member of a Tag. Entries for Blocks are processed first and any subsequent entry for the same block will be ignored.",
                 "    2. You can add blocks that are already passable, such as tall grass, in order to apply a speed reduction,",
                 "       and to also have the block's natural sound play when moving through it.",
                 "    3. Strings that don't match this pattern will be invalidated and removed from the config.",
@@ -143,11 +146,12 @@ final class CommonConfig
             .comment(
                 "",
                 "  An additional list of blocks to blacklist and never allow passing through.",
-                "  This list is in addition to blocks that are blacklisted by default.",
+                "  This list is in addition to blocks that are permanently blacklisted by default.",
                 "",
-                "  The default blacklisted Blocks are as fallows:",
-                "    All blocks of the Material types: AIR, BUBBLE_COLUMN, FIRE, PISTON, PORTAL, STRUCTURAL_AIR",
-                "    Other Blocks: minecraft:bedrock, minecraft:end_portal_frame, minecraft:hay_block, minecraft:slime_block, minecraft:honey_block, all beds"
+                "  The default permanently blacklisted Blocks are as fallows:",
+                "    Blocks: " + BlockConfigMap.BLACKLIST_BLOCKS.stream().map(b -> "" + Objects.requireNonNull(b.getRegistryName())).collect(Collectors.joining(", ")),
+                "    All blocks in the BlockTags: " + BlockConfigMap.BLACKLIST_TAGS.stream().map(t -> "#" + t.location()).collect(Collectors.joining(", ")),
+                "    All blocks with Material types: " + String.join(", ", BlockConfigMap.BLACKLIST_MATERIALS.values())
             )
             .translation(getLangKey(LANGKEY_CONFIG, LANGKEY_SETTING_BLACKLISTBLOCKS))
             .defineList(LANGKEY_SETTING_BLACKLISTBLOCKS, Collections.emptyList(), RESLOC_VALIDATOR);
@@ -168,12 +172,12 @@ final class CommonConfig
 
     Collection<String> getPassableBlocks()
     {
-        return passableBlocks.get().stream().map(CharSequence::toString).collect(Collectors.toSet());
+        return passableBlocks.get().stream().map(CharSequence::toString).map(String::trim).collect(Collectors.toSet());
     }
 
     Collection<String> getBlacklistBlocks()
     {
-        return blacklistBlocks.get().stream().map(CharSequence::toString).collect(Collectors.toSet());
+        return blacklistBlocks.get().stream().map(CharSequence::toString).map(String::trim).collect(Collectors.toSet());
     }
 
     /**
