@@ -9,7 +9,7 @@ buildscript {
         classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
     }
 }
-plugins { id 'org.ajoberstar.reckon' version '0.13.0' }
+plugins { id 'org.ajoberstar.reckon' version '0.16.1' }
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'checkstyle'
@@ -18,8 +18,9 @@ if (file('../.etc/srscode-MC.gradle').exists()) { apply from:'../.etc/srscode-MC
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
 reckon {
-    scopeFromProp()
-    stageFromProp('dev', 'rc', 'final')
+    stages('dev', 'rc', 'final')
+    setStageCalc(calcStageFromProp())
+    setScopeCalc(calcScopeFromProp())
 }
 
 checkstyle {
@@ -79,3 +80,7 @@ jar {
         'MixinConfigs'            : mixin_file
     ])
 }
+
+task ttt{doLast{
+    println java.sourceCompatibility.majorVersion
+}}
