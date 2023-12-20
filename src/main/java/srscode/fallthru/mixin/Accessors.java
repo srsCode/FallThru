@@ -2,7 +2,7 @@
  * Project      : FallThru
  * File         : Accessors.java
  *
- * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2023 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -53,7 +53,7 @@ public final class Accessors
         @Accessor boolean getHasCollision();
 
         @Mutable
-        @Accessor void setHasCollision(final boolean val);
+        @Accessor void setHasCollision(boolean val);
     }
 
     /**
@@ -69,7 +69,7 @@ public final class Accessors
     public interface BlockStateBaseAccessor
     {
         @Mutable
-        @Accessor void setCanOcclude(final boolean solid);
+        @Accessor void setCanOcclude(boolean solid);
     }
 
     /**

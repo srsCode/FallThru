@@ -1,33 +1,31 @@
 modLoader       = "javafml"
-loaderVersion   = "[40,)"
-license         = "MIT License"
-issueTrackerURL = "https://github.com/srscode/FallThru/issues/"
+loaderVersion   = "${loader_version_range}"
+license         = "${mod_license}"
+issueTrackerURL = "${mod_issue_tracker}"
 
 [[mods]]
-modId           = "fallthru"
-version         = "${file.jarVersion}"
-displayName     = "FallThru"
-#updateJSONURL  = ""
-displayURL      = "https://srscode.github.io/FallThru/"
-logoFile        = "fallthru-banner.png"
-credits         = "https://github.com/srscode/FallThru/graphs/contributors"
-authors         = "srs-bsns"
-description     = '''
-FallThru allows the modifying of solid blocks, such as leaves, so that entities can pass through them, or for applying speed reductions to blocks that are already non-solid, such as tall grass.
+modId           = "${mod_id}"
+displayName     = "${mod_name}"
+version         = "${version}"
+description     = '''${mod_description}'''
+authors         = "${mod_authors}"
+displayURL      = "${mod_url}"
+logoFile        = "${mod_logoFile}"
 
-The configuration is versatile and each block can be configured individually.
-'''
-
-[[dependencies.fallthru]]
-modId           = "forge"
-mandatory       = true
-versionRange    = "[40,)"
-ordering        = "NONE"
-side            = "BOTH"
-
-[[dependencies.fallthru]]
+[[dependencies.${mod_id}]]
 modId           = "minecraft"
-mandatory       = true
-versionRange    = "[1.18.2,)"
+type            = "required"
+versionRange    = "${mc_version_range}"
 ordering        = "NONE"
 side            = "BOTH"
+
+
+[[dependencies.${mod_id}]]
+modId           = "neoforge"
+type            = "required"
+versionRange    = "${neo_version_range}"
+ordering        = "NONE"
+side            = "BOTH"
+
+[[mixins]]
+config          = "fallthru.mixins.json"

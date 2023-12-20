@@ -2,7 +2,7 @@
  * Project      : FallThru
  * File         : CommonConfig.java
  *
- * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2023 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -32,41 +32,45 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.Block;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.ForgeConfigSpec.BooleanValue;
-import net.minecraftforge.common.ForgeConfigSpec.Builder;
-import net.minecraftforge.common.ForgeConfigSpec.ConfigValue;
-import net.minecraftforge.common.ForgeConfigSpec.IntValue;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.ModConfigSpec.BooleanValue;
+import net.neoforged.neoforge.common.ModConfigSpec.Builder;
+import net.neoforged.neoforge.common.ModConfigSpec.ConfigValue;
+import net.neoforged.neoforge.common.ModConfigSpec.IntValue;
 
 import srscode.fallthru.BlockConfigMap.BlockConfig;
 
 /**
  * The main configuration class for FallThru.
  */
-final class CommonConfig
+public final class CommonConfig
 {
-    private static final Marker MARKER_CONFIG                   = MarkerManager.getMarker("CONFIG");
-    private static final String LANGKEY_CONFIG                  = "config";
-    private static final String LANGKEY_SETTING_BLOCKBREAK      = "doBlockBreaking";
-    private static final String LANGKEY_SETTING_DAMAGETHRESHOLD = "damageThreshold";
-    private static final String LANGKEY_SETTING_PASSABLEBLOCKS  = "passableBlocks";
-    private static final String LANGKEY_SETTING_BLACKLISTBLOCKS = "blacklistBlocks";
-    private static final Predicate<Object> RESLOC_VALIDATOR     = s -> s instanceof String && ResourceLocation.tryParse((String) s) != null;
-    private static final Supplier<String> PASSABLE_DEFAULT      = () -> "#" + BlockTags.LEAVES.location() + "[0.8, 0.8]";
+    private static final Marker MARKER_CONFIG                     = MarkerFactory.getMarker("CONFIG");
+    private static final String LANGKEY_CONFIG                    = "config";
+    private static final String LANGKEY_SETTING_BLOCKBREAK        = "doBlockBreaking";
+    private static final String LANGKEY_SETTING_DAMAGETHRESHOLD   = "damageThreshold";
+    private static final String LANGKEY_SETTING_PASSABLEBLOCKS    = "passableBlocks";
+    private static final String LANGKEY_SETTING_BLACKLISTBLOCKS   = "blacklistBlocks";
+    private static final Predicate<Object> RESLOC_VALIDATOR       = s -> s instanceof String rl && ResourceLocation.tryParse(rl) != null;
+    private static final Supplier<String> PASSABLE_DEFAULT        = () -> "#" + BlockTags.LEAVES.location() + "[0.8, 0.8]";
+    private static final Supplier<Registry<Block>> BLOCK_REGISTRY = () -> BuiltInRegistries.BLOCK;
 
     final IntValue     damageThreshold;
     final BooleanValue doBlockBreaking;
@@ -76,7 +80,7 @@ final class CommonConfig
 
     CommonConfig(final Builder builder)
     {
-        builder.comment("  FallThru Config").push(FallThru.MOD_ID);
+        builder.comment("  FallThru Config").push(FallThru.modId());
 
         this.damageThreshold = builder
             .comment(
@@ -149,9 +153,8 @@ final class CommonConfig
                 "  This list is in addition to blocks that are permanently blacklisted by default.",
                 "",
                 "  The default permanently blacklisted Blocks are as fallows:",
-                "    Blocks: " + BlockConfigMap.BLACKLIST_BLOCKS.stream().map(b -> "" + Objects.requireNonNull(b.getRegistryName())).collect(Collectors.joining(", ")),
-                "    All blocks in the BlockTags: " + BlockConfigMap.BLACKLIST_TAGS.stream().map(t -> "#" + t.location()).collect(Collectors.joining(", ")),
-                "    All blocks with Material types: " + String.join(", ", BlockConfigMap.BLACKLIST_MATERIALS.values())
+                "    Blocks: " + BlockConfigMap.BLACKLIST_BLOCKS.stream().map(b -> "" + BLOCK_REGISTRY.get().getResourceKey(b).map(ResourceKey::location)).collect(Collectors.joining(", ")),
+                "    All blocks in the BlockTags: " + BlockConfigMap.BLACKLIST_TAGS.stream().map(t -> "#" + t.location()).collect(Collectors.joining(", "))
             )
             .translation(getLangKey(LANGKEY_CONFIG, LANGKEY_SETTING_BLACKLISTBLOCKS))
             .defineList(LANGKEY_SETTING_BLACKLISTBLOCKS, Collections.emptyList(), RESLOC_VALIDATOR);
@@ -167,7 +170,7 @@ final class CommonConfig
      */
     private static String getLangKey(final String... keys)
     {
-        return (keys.length > 0) ? String.join(".", FallThru.MOD_ID, String.join(".", keys)) : FallThru.MOD_ID;
+        return (keys.length > 0) ? String.join(".", FallThru.modId(), String.join(".", keys)) : FallThru.modId();
     }
 
     Collection<String> getPassableBlocks()
@@ -193,12 +196,12 @@ final class CommonConfig
      */
     void onConfigUpdate(final ModConfigEvent.Reloading event)
     {
-        if (event.getConfig().getModId().equals(FallThru.MOD_ID)) {
+        if (event.getConfig().getModId().equals(FallThru.modId())) {
             if (FMLEnvironment.dist == Dist.CLIENT && (Minecraft.getInstance().getSingleplayerServer() == null || Minecraft.getInstance().getConnection() != null)) {
-                FallThru.LOGGER.debug(CommonConfig.MARKER_CONFIG, "The config file has changed but the integrated server is not running. Nothing to do.");
+                FallThru.logger().debug(CommonConfig.MARKER_CONFIG, "The config file has changed but the integrated server is not running. Nothing to do.");
             } else {
-                FallThru.LOGGER.debug(CommonConfig.MARKER_CONFIG, "The config file has changed and the server is running. Resyncing config.");
-                FallThru.BLOCK_CONFIG_MAP.syncLocal();
+                FallThru.logger().debug(CommonConfig.MARKER_CONFIG, "The config file has changed and the server is running. Resyncing config.");
+                FallThru.blockConfigs().syncLocal();
             }
         }
     }

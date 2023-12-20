@@ -2,7 +2,7 @@
  * Project      : FallThru
  * File         : FallThru.java
  *
- * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2023 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -28,70 +28,101 @@
 
 package srscode.fallthru;
 
-import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.MarkerFactory;
 
-import javax.annotation.Nullable;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModLoadingContext;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.MarkerManager;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
-
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.common.ForgeI18n;
-import net.minecraftforge.fml.Logging;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import de.srsco.srslib.util.Util;
 
 
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "checkstyle:HideUtilityClassConstructor"})
 @Mod(FallThru.MOD_ID)
 public final class FallThru
 {
-    public static final String         MOD_ID           = "fallthru";
-    public static final Logger         LOGGER           = LogManager.getLogger(MOD_ID);
-    public static final BlockConfigMap BLOCK_CONFIG_MAP = new BlockConfigMap(); /*This has to be public for access by mixin injections*/
+    public  static final String MOD_ID = "fallthru";
 
-    private static FallThru     instance;
-    private static CommonConfig commonConfig;
+    private static final Logger          LOGGER        = Util.getLogger(FallThru.class);
+    private static final BlockConfigMap  BLOCK_CONFIGS = new BlockConfigMap();
+    private static final CommonConfig    CONFIG;
+    private static final ModConfigSpec   CONFIG_SPEC;
 
-    public FallThru()
+    private static FallThru instance;
+
+    static
     {
-        LOGGER.debug(MarkerManager.getMarker("LIFECYCLE").addParents(Logging.LOADING), "Creating an instance of FallThru!");
+        final var config = new ModConfigSpec.Builder().configure(CommonConfig::new);
+        CONFIG = config.getLeft();
+        CONFIG_SPEC = config.getRight();
+    }
+
+    public FallThru(final IEventBus modEventBus)
+    {
         instance = this;
-        final var config = new ForgeConfigSpec.Builder().configure(CommonConfig::new);
-        commonConfig = config.getLeft();
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, config.getRight(), MOD_ID + ".toml");
-        final var modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        logger().debug(MarkerFactory.getMarker("LIFECYCLE"), "Creating an instance of FallThru!");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CONFIG_SPEC, modId() + ".toml");
         modEventBus.addListener(NetworkHandler.INSTANCE::registerPackets);
-        modEventBus.addListener(commonConfig::onConfigUpdate);
+        modEventBus.addListener(CONFIG::onConfigUpdate);
+        NeoForge.EVENT_BUS.addListener(FallThru::onRegisterCommand);
     }
 
     /**
-     * @return The FallThru instance.
+     * @return the Mod instance of FallThru
      */
-    static FallThru getInstance()
+    public static FallThru instance()
     {
         return instance;
     }
 
     /**
-     * @return The FallThru config.
+     * @return the FallThru mod ID
      */
-    static CommonConfig config()
+    public static String modId()
     {
-        return commonConfig;
+        return MOD_ID;
     }
 
-    Component getTranslation(@Nullable final Component textComponent, final String key, final Object... objs)
+    /**
+     * @return the FallThru main logger
+     */
+    public static Logger logger()
     {
-        return ForgeI18n.getPattern(key).equals(key)
-            ? textComponent != null ? textComponent.plainCopy().append(Arrays.toString(objs)) : new TextComponent(Arrays.toString(objs))
-            : textComponent != null ? new TranslatableComponent(key, textComponent) : new TranslatableComponent(key, objs);
+        return LOGGER;
+    }
+
+    /**
+     * @return The FallThru config.
+     */
+    public static CommonConfig config()
+    {
+        return CONFIG;
+    }
+
+    /**
+     *  Gets the BlockConfigMap.
+     *  This has to be public for access by mixin injections.
+     *
+     * @return the BlockConfigMap
+     */
+    public static BlockConfigMap blockConfigs()
+    {
+        return BLOCK_CONFIGS;
+    }
+
+    /**
+     * This will register the /fallthru console command.
+     *
+     * @param event the event, duh.
+     */
+    public static void onRegisterCommand(final RegisterCommandsEvent event)
+    {
+        logger().debug(MarkerFactory.getMarker("EVENTS"), "Registering /fallthru command");
+        FTCommand.register(event.getDispatcher());
     }
 }

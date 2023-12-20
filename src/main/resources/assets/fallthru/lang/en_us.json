@@ -4,6 +4,12 @@
   "fallthru.config.doBlockBreaking" : "Allow Block Breaking",
   "fallthru.config.passableBlocks"  : "Passable Blocks",
   "fallthru.config.blacklistBlocks" : "Blacklisted Blocks",
-  "fallthru.death.fallintoleaves"   : "%1$s fell into leaves and was impaled by branches",
-  "fallthru.death.fallintosnow"     : "%1$s got packed into a snowball"
+
+  "fallthru.command.sync"                  : "Command to resync client config with the server config",
+  "fallthru.command.list"                  : "Command to list the current passable blocks",
+  "fallthru.command.add"                   : "Command to add a new passable block",
+  "fallthru.command.add.error.blacklisted" : "Block(s) blacklisted: %s",
+  "fallthru.command.remove"                : "Command to remove a passable block",
+  "fallthru.command.remove.error"          : "",
+  "fallthru.command.error.bad_resloc"      : "Bad ResourceLocation for Block/Tag: %s"
 }

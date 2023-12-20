@@ -1,1 +1,10 @@
-{"pack":{"description":"FallThru resources","pack_format":8}}
+{
+  "pack":{
+    "description":"${mod_name} resources",
+    "pack_format": ${pack_format},
+    "supported_formats": [
+      ${pack_format},
+      2147483647
+    ]
+  }
+}

@@ -2,7 +2,7 @@
  * Project      : FallThru
  * File         : WalkNodeEvaluatorMixin.java
  *
- * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2023 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -59,14 +59,11 @@ public abstract class WalkNodeEvaluatorMixin extends NodeEvaluator
      *
      *  @param callback Returns the penalized PathPoint.
      */
-    @Inject(at = @At("HEAD"), cancellable = true, method = "evaluateBlockPathType(Lnet/minecraft/world/level/BlockGetter;ZZLnet/minecraft/core/BlockPos;" +
+    @Inject(at = @At("HEAD"), cancellable = true, method = "evaluateBlockPathType(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;" +
         "Lnet/minecraft/world/level/pathfinder/BlockPathTypes;)Lnet/minecraft/world/level/pathfinder/BlockPathTypes;")
-    private void evaluateBlockPathType(final BlockGetter world, final boolean closed, final boolean door, final BlockPos pos,
-                                       final BlockPathTypes pathNodeType, final CallbackInfoReturnable<BlockPathTypes> callback)
+    private void evaluateBlockPathType(final BlockGetter world, final BlockPos pos, final BlockPathTypes pathNodeType, final CallbackInfoReturnable<BlockPathTypes> callback)
     {
-        if (FallThru.BLOCK_CONFIG_MAP.hasKey(world.getBlockState(pos).getBlock())) {
-            callback.setReturnValue(BlockPathTypes.WALKABLE);
-        }
+        FallThru.blockConfigs().evaluate(world.getBlockState(pos), () -> callback.setReturnValue(BlockPathTypes.WALKABLE));
     }
 
     /**
@@ -79,9 +76,7 @@ public abstract class WalkNodeEvaluatorMixin extends NodeEvaluator
         method = "getBlockPathType(Lnet/minecraft/world/level/BlockGetter;III)Lnet/minecraft/world/level/pathfinder/BlockPathTypes;")
     private void getBlockPathType(final BlockGetter world, final int x, final int y, final int z, final CallbackInfoReturnable<BlockPathTypes> callback)
     {
-        if (FallThru.BLOCK_CONFIG_MAP.hasKey(world.getBlockState(new BlockPos(x, y, z)).getBlock())) {
-            callback.setReturnValue(BlockPathTypes.WALKABLE);
-        }
+        FallThru.blockConfigs().evaluate(world.getBlockState(new BlockPos(x, y, z)), () -> callback.setReturnValue(BlockPathTypes.WALKABLE));
     }
 
     /**
@@ -97,12 +92,12 @@ public abstract class WalkNodeEvaluatorMixin extends NodeEvaluator
     private void findAcceptedNode(final int x, final int y, final int z, final int stepHeight, final double groundYIn,
                              final Direction facing, final BlockPathTypes nodeType, final CallbackInfoReturnable<Node> callback)
     {
-        FallThru.BLOCK_CONFIG_MAP
-            .getConfig(this.level.getBlockState(new BlockPos(x, y, z)).getBlock())
-            .ifPresent(blockConfig -> {
+        FallThru.blockConfigs().ifPresent(
+            this.level.getBlockState(new BlockPos(x, y, z)),
+            blockConfig -> {
                 final var node = this.getNode(x, y, z);
                 node.type = BlockPathTypes.WALKABLE;
-                node.costMalus = (float)Math.max(0.0, (1.0 / blockConfig.speedMult()) * 2.0);
+                node.costMalus = (float) Math.max(0.0, (1.0 / blockConfig.speedMult()) * 2.0);
                 callback.setReturnValue(node);
             });
     }

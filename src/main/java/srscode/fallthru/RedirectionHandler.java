@@ -2,7 +2,7 @@
  * Project      : FallThru
  * File         : RedirectionHandler.java
  *
- * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2023 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -30,14 +30,9 @@ package srscode.fallthru;
 
 import java.util.Random;
 
-import javax.annotation.Nonnull;
-
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -45,7 +40,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Material;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 
@@ -59,27 +53,8 @@ public final class RedirectionHandler
 {
     private RedirectionHandler() {}
 
-    private static final String       DAMAGETYPE_LEAVES = "fallintoleaves";
-    private static final String       DAMAGETYPE_SNOW   = "fallintosnow";
-    private static final DamageSource DMGSRC_LEAVES     = new DamageSource(DAMAGETYPE_LEAVES) {
-        private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_LEAVES;
-        @Nonnull
-        @Override public Component getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
-        {
-            return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " fell into leaves and was impaled by branches");
-        }
-    }.bypassArmor();
-    private static final DamageSource DMGSRC_SNOW       = new DamageSource(DAMAGETYPE_SNOW) {
-        private static final String LANG_KEY = FallThru.MOD_ID + ".death." + DAMAGETYPE_SNOW;
-        @Nonnull
-        @Override public Component getLocalizedDeathMessage(@Nonnull final LivingEntity entity)
-        {
-            return FallThru.getInstance().getTranslation(entity.getDisplayName(), LANG_KEY, " got packed into a snowball");
-        }
-    }.bypassArmor();
-    private static final Random       RANDOM            = new Random();
-    // TODO: Maybe add a config setting for the chance to break blocks
-    private static final int          BREAK_CHANCE      = 3;
+    private static final Random RANDOM       = new Random();
+    private static final int    BREAK_CHANCE = 3;
 
     /**
      * This method determines if an {@link LivingEntity} is moving based on the Vec3d from {@link Entity#getDeltaMovement}, adjusting
@@ -124,24 +99,6 @@ public final class RedirectionHandler
     }
 
     /**
-     * This method determines which {@link DamageSource} should be used when damaging an {@link LivingEntity} that has fallen into a passable Block.
-     *
-     * @param  blockState The {@link BlockState} of the block fallen into.
-     * @return            The determined DamageSource.
-     */
-    private static DamageSource getDamageSource(final BlockBehaviour.BlockStateBase blockState)
-    {
-        final var material = blockState.getMaterial();
-        if (blockState.is(BlockTags.LEAVES)) {
-            return DMGSRC_LEAVES;
-        } else if (material == Material.TOP_SNOW || material == Material.SNOW) {
-            return DMGSRC_SNOW;
-        } else {
-            return DamageSource.FALL;
-        }
-    }
-
-    /**
      * The Collision handler.
      * This method is called from the mixin injection point in {@link BlockBehaviour.BlockStateBase#entityInside}.
      *
@@ -167,10 +124,10 @@ public final class RedirectionHandler
                     final var jumpeffect = entity.getEffect(MobEffects.JUMP);
                     final var damage = getDamage(entity.fallDistance, dmgThresh, (jumpeffect == null ? 0.0 : jumpeffect.getAmplifier() + 1), blockConfig.damageMult());
                     if (damage > 0) {
-                        entity.hurt(getDamageSource(blockState), (float) damage);
+                        entity.hurt(entity.damageSources().fall(), (float) damage);
                         if (entity.isVehicle()) {
                             // recursive call for riders
-                            entity.getIndirectPassengers().forEach(ent -> ent.hurt(getDamageSource(blockState), (float) (damage * 0.8)));
+                            entity.getIndirectPassengers().forEach(rider -> rider.hurt(rider.damageSources().fall(), (float) (damage * 0.8)));
                         }
                     }
 
@@ -180,11 +137,11 @@ public final class RedirectionHandler
                     if (!level.isClientSide && !creative && FallThru.config().doBlockBreaking.get() && !negationEffect) {
                         // slightly attenuate the entity bounding box to below the entity for block breaking
                         final var breakbb = entitybb.move(0, -0.2, 0);
-                        BlockPos.betweenClosedStream(new BlockPos(breakbb.minX, breakbb.minY, breakbb.minZ), new BlockPos(breakbb.maxX, breakbb.maxY, breakbb.maxZ))
+                        BlockPos.betweenClosedStream(breakbb)
                             .filter(filtpos -> {
                                 final var blockstate = level.getBlockState(filtpos);
-                                return blockstate.getMaterial() != Material.AIR
-                                    && FallThru.BLOCK_CONFIG_MAP.hasKey(blockstate.getBlock())
+                                return !blockstate.isAir()
+                                    && FallThru.blockConfigs().containsKey(blockstate.getBlock())
                                     && RANDOM.nextInt(BREAK_CHANCE) == 0;
                             })
                             .forEach(despos -> level.destroyBlock(despos, true));

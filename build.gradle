@@ -1,84 +1,114 @@
-buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net' }
-        maven { url = 'https://repo.spongepowered.org/maven/'}
-        mavenCentral()
-    }
-    dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
-        classpath 'org.parchmentmc:librarian:1.+'
-        classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
-    }
+plugins {
+    id 'java-library'
+    id 'idea'
+    id 'checkstyle'
+    id 'net.neoforged.gradle.userdev' version '7.0.+'
 }
-plugins { id 'org.ajoberstar.reckon' version '0.16.1' }
-apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'org.spongepowered.mixin'
-apply plugin: 'checkstyle'
 if (file('../.etc/srscode-MC.gradle').exists()) { apply from:'../.etc/srscode-MC.gradle' }
+
+base.archivesName.set mod_name
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
-reckon {
-    scopeFromProp()
-    stageFromProp('dev', 'rc', 'final')
-}
-
 checkstyle {
-    setConfig resources.text.fromUri('https://srscode.github.io/checkstyle/srsCode-MC-checkstyle-J16.xml')
-    setReportsDir file("${project.buildDir}/reports/checkstyle")
-    setToolVersion '8.41.1' // newer versions look for, and fail to get, deps (ie: net.sf.saxon:Saxon-HE:10.5) in project-level repos (wtf?)
+    setConfig resources.text.fromUri('https://srscode.github.io/checkstyle/srsCode-NF-checkstyle-J11+.xml')
+    setReportsDir layout.buildDirectory.get().dir('reports').dir('checkstyle').asFile
+    setToolVersion '10.12.5'
 }
 tasks.withType(Checkstyle) {
-    reports.xml.enabled false
-    reports.html.enabled true
-}
-
-sourceSets.main.ext.refMap = 'fallthru.refmap.json'
-def mixin_file = 'fallthru.mixins.json'
-minecraft {
-    mappings channel: 'official', version: project.mc_version
-    runs {
-        client {
-            taskName 'fallthruClient'
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.debug.export', 'true'
-            property 'fml.earlyprogresswindow', 'false'
-            arg "-mixin.config=${mixin_file}" as String
-            mods {self {source sourceSets.main}}
-        }
-        server {
-            taskName 'fallthruServer'
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.debug.export', 'true'
-            property 'fml.earlyprogresswindow', 'false'
-            arg "-mixin.config=${mixin_file}" as String
-            mods {self {source sourceSets.main}}
-        }
+    reports {
+        xml.required  = false
+        html.required = true
     }
 }
 
-dependencies {
-    minecraft "net.minecraftforge:forge:${project.mc_version}-${project.forge_version}"
-    annotationProcessor "org.spongepowered:mixin:${project.mixinAP_version}:processor"
+configurations {
+    srsLib {}
+    implementation.extendsFrom srsLib
 }
 
-setGroup 'de.srsco'
-jar {
-    from 'LICENCE.txt'
-    manifest.attributes([
-        'Specification-Vendor'    : "${project.vendor}",
-        'Specification-Title'     : "${project.name}",
-        'Specification-Version'   : '1',
-        'Implementation-Vendor'   : "${project.vendor}",
-        'Implementation-Title'    : "${project.name}",
-        'Implementation-Version'  : "${project.version}",
-        'Implementation-Timestamp': java.time.OffsetDateTime.now() as String,
-        'MixinConfigs'            : mixin_file
-    ])
+runs {
+    configureEach {
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        systemProperty 'mixin.debug.export', 'true'
+        modSource project.sourceSets.main
+        dependencies {
+            runtime project.configurations.srsLib
+        }
+    }
+
+    client {programArguments '--width', '1920', '--height', '1080', '--username', 'srs_dev'}
+
+    server {programArguments '--nogui'}
+}
+
+repositories {mavenLocal()}
+
+jarJar.enable()
+dependencies {
+    implementation (group:'net.neoforged', name:'neoforge', version:"${neo_version}")
+    jarJar srsLib  (group:"${group}", name:"${srslib_artifact}", version:"${srslib_version_range}") {jarJar.pin(it, "${srslib_version}")}
+}
+
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            mc_version          : mc_version,
+            neo_version         : neo_version,
+            loader_version_range: loader_version_range,
+            srslib_artifact     : srslib_artifact,
+            srslib_version      : srslib_version,
+            srslib_version_range: srslib_version_range,
+            mod_license         : mod_license,
+            mod_issue_tracker   : mod_issue_tracker,
+            mod_id              : mod_id,
+            mod_name            : base.archivesName.get(),
+            version             : version as String,
+            mod_description     : mod_description,
+            mod_authors         : mod_authors,
+            mod_url             : mod_url,
+            mod_logoFile        : mod_logoFile,
+            mc_version_range    : mc_version_range,
+            neo_version_range   : neo_version_range,
+            pack_format         : pack_format,
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {options.encoding = 'UTF-8'}
+
+tasks.getByName('jar').configure {
+    from 'LICENCE.txt'
+    manifest.attributes([
+        'Specification-Vendor'   : "${project.group}",
+        'Specification-Title'    : "${base.archivesName.get()}",
+        'Specification-Version'  : '1',
+        'Implementation-Vendor'  : "${project.group}",
+        'Implementation-Title'   : "${base.archivesName.get()}",
+        'Implementation-Version' : "${project.version}",
+        'Build-Timestamp'        : java.time.OffsetDateTime.now() as String
+    ])
+}
+
+tasks.getByName('jarJar').configure {
+    from 'LICENCE.txt'
+    archiveClassifier = '' // overwrite the jar task output
+}
+
+// A task to partially clean build outputs while leaving cached artifacts alone
+tasks.create('cleanOutputs', Delete).configure {cotask ->
+    tasks.getByName('assemble').configure {mustRunAfter(cotask)}
+    doFirst {targetFiles.each {project.logger.lifecycle "cleaning: $it.canonicalPath"}}
+    delete(tasks.withType(ProcessResources).collect {it.outputs.files.files}.flatten())
+    delete(tasks.withType(JavaCompile).collect {it.outputs.files.files}.flatten())
+    var libs = layout.buildDirectory.get().getAsFile().toPath().resolve("libs").toFile()
+    if (libs.exists()) {delete(libs.listFiles())}
+}
+
+// A task to execute a clean build
+tasks.create('cleanBuild') {
+    dependsOn 'cleanOutputs', 'build'
+}

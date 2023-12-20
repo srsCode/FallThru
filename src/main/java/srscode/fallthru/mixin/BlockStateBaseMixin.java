@@ -2,7 +2,7 @@
  * Project      : FallThru
  * File         : BlockStateBaseMixin.java
  *
- * Copyright (c) 2019-2021 srsCode, srs-bsns (forfrdm [at] gmail.com)
+ * Copyright (c) 2019-2023 srsCode, srs-bsns (forfrdm [at] gmail.com)
  *
  * The MIT License (MIT)
  *
@@ -45,6 +45,7 @@ import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
+import de.srsco.srslib.function.Condition;
 import srscode.fallthru.FallThru;
 import srscode.fallthru.RedirectionHandler;
 
@@ -73,9 +74,9 @@ public abstract class BlockStateBaseMixin
         method = "entityInside(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;)V")
     private void entityInside(final Level world, final BlockPos pos, final Entity entity, final CallbackInfo callback)
     {
-        if (entity instanceof LivingEntity) {
-            FallThru.BLOCK_CONFIG_MAP.getConfig(this.asState().getBlock())
-                .ifPresent(blockConfig -> RedirectionHandler.handleCollision(world, pos, (LivingEntity)entity, this.asState(), blockConfig, callback));
+        if (entity instanceof LivingEntity living) {
+            final var blockstate = this.asState();
+            FallThru.blockConfigs().ifPresent(blockstate, blockconfig -> RedirectionHandler.handleCollision(world, pos, living, blockstate, blockconfig, callback));
         }
     }
 
@@ -89,9 +90,7 @@ public abstract class BlockStateBaseMixin
         method = "isPathfindable(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/pathfinder/PathComputationType;)Z")
     private void isPathfindable(final BlockGetter world, final BlockPos pos, final PathComputationType type, final CallbackInfoReturnable<Boolean> callback)
     {
-        if (type == PathComputationType.LAND && FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
-            callback.setReturnValue(true);
-        }
+        FallThru.blockConfigs().evaluateIf(this.asState(), () -> callback.setReturnValue(true), Condition.equality(() -> type, () -> PathComputationType.LAND));
     }
 
     /**
@@ -104,8 +103,6 @@ public abstract class BlockStateBaseMixin
         method = "getCollisionShape(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/shapes/VoxelShape;")
     private void getCollisionShape(final BlockGetter world, final BlockPos pos, final CallbackInfoReturnable<VoxelShape> callback)
     {
-        if (FallThru.BLOCK_CONFIG_MAP.hasKey(this.asState().getBlock())) {
-            callback.setReturnValue(Shapes.empty());
-        }
+        FallThru.blockConfigs().evaluate(this.asState(), () -> callback.setReturnValue(Shapes.empty()));
     }
 }
